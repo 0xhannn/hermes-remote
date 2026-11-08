@@ -139,11 +139,40 @@ HOST = os.environ.get("HERMES_HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", os.environ.get("HERMES_PORT", 8093)))
 HERMES_WEB_DIR = os.environ.get("HERMES_WEB_DIR", os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 HERMES_REPO_BRANCH = os.environ.get("HERMES_REPO_BRANCH", "main")
+def _looks_like_hermes(p):
+    if not p:
+        return False
+    for probe in ("config.yaml", "MEMORY.md", "memories", "skills", ".pin_secret"):
+        if os.path.exists(os.path.join(p, probe)):
+            return True
+    return False
+
+
 def _hermes_config_dir():
+    cands = []
     if sys.platform == "win32":
         local = os.environ.get("LOCALAPPDATA", os.path.expanduser("~\\AppData\\Local"))
-        return os.path.join(local, "hermes")
-    return os.path.expanduser("~/.hermes")
+        appdata = os.environ.get("APPDATA", "")
+        userprofile = os.environ.get("USERPROFILE", os.path.expanduser("~"))
+        cands = [
+            os.environ.get("HERMES_HOME", ""),
+            os.path.join(local, "hermes"),
+            os.path.join(appdata, "hermes") if appdata else "",
+            os.path.join(userprofile, ".hermes"),
+        ]
+    else:
+        cands = [
+            os.environ.get("HERMES_HOME", ""),
+            os.path.expanduser("~/.hermes"),
+            "/etc/hermes",
+        ]
+    seen = []
+    for c in cands:
+        if c and c not in seen:
+            seen.append(c)
+            if _looks_like_hermes(c):
+                return c
+    return seen[0] if seen else os.path.expanduser("~/.hermes")
 
 CONFIG_PATH = os.environ.get("HERMES_CONFIG_PATH", os.path.join(_hermes_config_dir(), "config.yaml"))
 PIN_FILE = os.path.join(_hermes_config_dir(), ".pin_secret")
