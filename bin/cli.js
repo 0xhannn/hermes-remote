@@ -92,10 +92,10 @@ function openBrowser() {
   const url = displayUrl;
   try {
     let cmd, cmdArgs;
-    if (process.platform === 'win32') { cmd = 'cmd'; cmdArgs = ['/c', 'start', '', url]; }
+    if (process.platform === 'win32') { cmd = 'explorer'; cmdArgs = [url]; }
     else if (process.platform === 'darwin') { cmd = 'open'; cmdArgs = [url]; }
     else { cmd = 'xdg-open'; cmdArgs = [url]; }
-    spawn(cmd, cmdArgs, { detached: true, stdio: 'ignore' }).unref();
+    spawn(cmd, cmdArgs, { detached: true, stdio: 'ignore', windowsHide: true }).unref();
     console.log(`🌐 Browser opened → ${url}`);
   } catch (_) {
     console.log(`📋 Open manually: ${url}`);
