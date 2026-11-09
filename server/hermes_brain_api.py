@@ -721,31 +721,67 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
 
         if path == "/api/hermes/system/update/check":
             try:
+                import json as _json
+                import urllib.request as _urlreq
                 import subprocess
-                local_sha = subprocess.check_output(
-                    ["git", "-C", HERMES_WEB_DIR, "rev-parse", "HEAD"],
-                    stderr=subprocess.STDOUT
-                ).decode("utf-8").strip()
-                
-                remote_out = subprocess.check_output(
-                    ["git", "-C", HERMES_WEB_DIR, "ls-remote", "origin", f"refs/heads/{HERMES_REPO_BRANCH}"],
-                    stderr=subprocess.STDOUT, timeout=10
-                ).decode("utf-8").strip()
-                remote_sha = remote_out.split()[0] if remote_out else local_sha
 
-                has_update = (local_sha != remote_sha)
-                
-                log_out = subprocess.check_output(
-                    ["git", "-C", HERMES_WEB_DIR, "log", "-1", "--format=%h - %s (%cr)"],
-                    stderr=subprocess.STDOUT
-                ).decode("utf-8").strip()
+                # Versi lokal dari package.json
+                local_version = ""
+                pkg_path = os.path.join(HERMES_WEB_DIR, "package.json")
+                if os.path.exists(pkg_path):
+                    try:
+                        with open(pkg_path, "r", encoding="utf-8") as _f:
+                            local_version = _json.load(_f).get("version", "")
+                    except Exception:
+                        pass
+
+                # Versi terbaru dari registry npm
+                latest_version = ""
+                try:
+                    _req = _urlreq.Request(
+                        "https://registry.npmjs.org/hermes-remote/latest",
+                        headers={"Accept": "application/json"}
+                    )
+                    with _urlreq.urlopen(_req, timeout=8) as _resp:
+                        latest_version = _json.loads(_resp.read().decode("utf-8")).get("version", "")
+                except Exception:
+                    pass
+
+                # Versi/nilai lokal dari git (bila repo ada)
+                local_sha = ""
+                remote_sha = ""
+                last_commit = ""
+                try:
+                    local_sha = subprocess.check_output(
+                        ["git", "-C", HERMES_WEB_DIR, "rev-parse", "HEAD"],
+                        stderr=subprocess.STDOUT
+                    ).decode("utf-8").strip()[:7]
+                    remote_out = subprocess.check_output(
+                        ["git", "-C", HERMES_WEB_DIR, "ls-remote", "origin", f"refs/heads/{HERMES_REPO_BRANCH}"],
+                        stderr=subprocess.STDOUT, timeout=10
+                    ).decode("utf-8").strip()
+                    remote_sha = remote_out.split()[0][:7] if remote_out else local_sha
+                    last_commit = subprocess.check_output(
+                        ["git", "-C", HERMES_WEB_DIR, "log", "-1", "--format=%h - %s (%cr)"],
+                        stderr=subprocess.STDOUT
+                    ).decode("utf-8").strip()
+                except Exception:
+                    pass
+
+                has_update = False
+                if latest_version and local_version:
+                    has_update = latest_version != local_version
+                elif local_sha and remote_sha:
+                    has_update = local_sha != remote_sha
 
                 return self._send_json(200, {
                     "success": True,
-                    "local_sha": local_sha[:7],
-                    "remote_sha": remote_sha[:7],
+                    "local_version": local_version,
+                    "latest_version": latest_version,
                     "has_update": has_update,
-                    "last_commit": log_out
+                    "local_sha": local_sha,
+                    "remote_sha": remote_sha,
+                    "last_commit": last_commit
                 })
             except Exception as e:
                 return self._send_json(500, {"success": False, "error": str(e)})
@@ -1106,6 +1142,36 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
             del entries[index]
             _write_memory_entries(target, entries)
             return self._send_json(200, {"success": True})
+
+        if path == "/api/hermes/system/update/shutdown":
+            try:
+                import subprocess
+                if os.name == "nt":
+                    cmd = f'netstat -ano | findstr :{PORT} | findstr LISTENING'
+                    out = subprocess.run(
+                        ["cmd", "/c", cmd], capture_output=True, text=True, timeout=10
+                    ).stdout
+                    pids = set()
+                    for line in out.splitlines():
+                        parts = line.split()
+                        if parts and parts[-1].isdigit():
+                            pids.add(parts[-1])
+                    for pid in pids:
+                        try:
+                            subprocess.Popen(
+                                ["taskkill", "/PID", pid, "/F"],
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                            )
+                        except Exception:
+                            pass
+                else:
+                    subprocess.Popen(
+                        ["pkill", "-f", "hermes_brain_api.py"],
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                    )
+                return self._send_json(200, {"success": True, "message": "Server dimatikan"})
+            except Exception as e:
+                return self._send_json(500, {"success": False, "error": str(e)})
 
         return self._send_json(404, {"success": False, "error": "Endpoint not found"})
 

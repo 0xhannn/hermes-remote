@@ -408,6 +408,7 @@
       </div>
 
       <div class="btn-row" style="margin-top: 10px;">
+        <button id="showUpdateBtn" class="btn btn-primary" type="button" style="display:none;">Lakukan Pembaruan</button>
         <button id="copyUpdateBtn" class="btn btn-primary" type="button" style="display:none;">Salin perintah</button>
       </div>
     </div>
@@ -681,9 +682,10 @@
       });
     }
 
-    // Update flow: versi npm beda, tampilkan perintah, salin. Server tidak dimatikan dari halaman ini.
+    // Update flow: ada pembaruan → tombol → klik → perintah muncul → salin → shutdown service
     const updateVersionInfo = document.getElementById('updateVersionInfo');
     const updateCommandBox = document.getElementById('updateCommandBox');
+    const showUpdateBtn = document.getElementById('showUpdateBtn');
     const copyUpdateBtn = document.getElementById('copyUpdateBtn');
     const updateCommand = 'npm install -g hermes-remote@latest';
 
@@ -693,23 +695,48 @@
         const data = await res.json();
         if (!data.success) throw new Error(data.error || 'gagal');
         if (data.has_update) {
-          updateVersionInfo.textContent = 'Terpasang v' + data.local_version + ' · npm v' + data.latest_version;
-          updateCommandBox.style.display = 'flex';
-          copyUpdateBtn.style.display = 'inline-flex';
+          updateVersionInfo.textContent = 'Terpasang v' + (data.local_version || '?') + ' · npm v' + (data.latest_version || '?');
+          showUpdateBtn.style.display = 'inline-flex';
         } else {
-          updateVersionInfo.textContent = 'Terpasang v' + data.local_version + ' · sudah terbaru';
+          updateVersionInfo.textContent = 'Terpasang v' + (data.local_version || '?') + ' · sudah terbaru';
         }
       } catch (err) {
         updateVersionInfo.textContent = 'Gagal memeriksa versi npm.';
       }
     }
 
+    showUpdateBtn.addEventListener('click', () => {
+      updateCommandBox.style.display = 'flex';
+      copyUpdateBtn.style.display = 'inline-flex';
+      showUpdateBtn.style.display = 'none';
+    });
+
     copyUpdateBtn.addEventListener('click', async () => {
+      let copied = false;
       try {
         await navigator.clipboard.writeText(updateCommand);
-        copyUpdateBtn.textContent = 'Tersalin';
+        copied = true;
       } catch (err) {
-        copyUpdateBtn.textContent = 'Gagal salin';
+        // fallback legacy
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = updateCommand;
+          document.body.appendChild(ta);
+          ta.select();
+          copied = document.execCommand('copy');
+          document.body.removeChild(ta);
+        } catch (e2) {
+          copied = false;
+        }
+      }
+      copyUpdateBtn.textContent = copied ? 'Tersalin · mematikan server' : 'Gagal salin';
+      try {
+        await fetch('/api/hermes/system/update/shutdown', {
+          method: 'POST',
+          headers: { 'X-Hermes-PIN': pin }
+        });
+      } catch (err) {
+        // shutdown mungkin sudah terpicu, abaikan
       }
     });
 
