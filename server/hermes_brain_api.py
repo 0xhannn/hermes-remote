@@ -770,6 +770,10 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
         except Exception:
             body = {}
 
+        if path == "/api/hermes/auth/logout":
+            expired = "hermes_pin=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"
+            return self._send_json(200, {"success": True, "message": "Logout OK"}, set_cookie=expired)
+
         if path == "/api/hermes/auth":
             pin = body.get("pin", "")
             current_pin = get_current_pin()

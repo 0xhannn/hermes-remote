@@ -429,7 +429,9 @@
     function logout() {
       MASTER_PIN = '';
       localStorage.removeItem('hermes_pin');
-      window.location.href = '/auth/?next=' + encodeURIComponent(window.location.pathname);
+      fetch('/api/hermes/auth/logout', { method: 'POST', credentials: 'same-origin' }).finally(() => {
+        window.location.href = '/auth/?next=' + encodeURIComponent(window.location.pathname);
+      });
     }
 
     async function loadDashboard() {

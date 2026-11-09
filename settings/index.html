@@ -557,7 +557,9 @@
       showConfirm('Konfirmasi Logout', 'Anda akan keluar dari sesi Hermes Control Center. Kredensial lokal akan dibersihkan.', true).then(ok => {
         if (ok) {
           localStorage.removeItem('hermes_pin');
-          window.location.href = '/auth/?next=' + encodeURIComponent('/');
+          fetch('/api/hermes/auth/logout', { method: 'POST', credentials: 'same-origin' }).finally(() => {
+            window.location.href = '/auth/?next=' + encodeURIComponent('/');
+          });
         }
       });
     }
