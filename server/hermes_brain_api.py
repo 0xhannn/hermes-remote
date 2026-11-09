@@ -1042,6 +1042,41 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
             _set_active_home(None)
             return self._send_json(200, {"success": True, "active": _hermes_config_dir()})
 
+        if path == "/api/hermes/profile/delete":
+            target = body.get("path", "").strip()
+            if not target:
+                return self._send_json(400, {"success": False, "error": "Path profil wajib diisi"})
+            target = os.path.abspath(target)
+            plist = list_hermes_profiles()["profiles"]
+            found = None
+            for p in plist:
+                if os.path.normcase(os.path.abspath(p["path"])) == os.path.normcase(target):
+                    found = p
+                    break
+            if not found:
+                return self._send_json(400, {"success": False, "error": "Profil tidak dikenali"})
+            if found["active"] or found["name"] == "(Default)":
+                return self._send_json(400, {"success": False, "error": "Tidak bisa menghapus profil aktif/default. Pindah ke profil lain dulu."})
+            # HANYA izinkan hapus profil di dalam folder profiles/ milik salah satu home.
+            # Home level-1 (base utama, misal home user lain) diblokir: terlalu destruktif
+            # dan sering memuat state tersembunyi (.git, dsb) yang bisa gagal di tengah hapus.
+            t_norm = os.path.normcase(target)
+            allowed = False
+            for h in _find_all_hermes_homes():
+                pr = os.path.normcase(os.path.join(h, "profiles")) + os.sep
+                if t_norm.startswith(pr):
+                    allowed = True
+                    break
+            if not allowed:
+                return self._send_json(400, {"success": False, "error": "Hanya profil di dalam folder profiles/ yang bisa dihapus"})
+            if not os.path.isdir(target):
+                return self._send_json(400, {"success": False, "error": "Folder profil tidak ditemukan"})
+            try:
+                shutil.rmtree(target)
+                return self._send_json(200, {"success": True, "message": "Profil dihapus"})
+            except Exception as e:
+                return self._send_json(500, {"success": False, "error": str(e)})
+
         if path == "/api/hermes/auth/change-pin":
             old_pin = body.get("old_pin", "").strip()
             new_pin = body.get("new_pin", "").strip()

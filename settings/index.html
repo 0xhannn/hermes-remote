@@ -527,6 +527,24 @@
     </div>
   </div>
 
+
+  <!-- Delete Profile Modal (Konfirmasi Kuat) -->
+  <div id="deleteProfileModal" class="modal-backdrop">
+    <div class="modal-box" style="max-width: 480px;">
+      <div class="modal-title">Hapus Profil</div>
+      <div class="modal-desc" id="deleteProfileDesc"></div>
+      <div style="margin-top: 14px;">
+        <div class="db-location-label">Ketik nama profil untuk konfirmasi</div>
+        <input type="text" id="deleteProfileInput" placeholder="masukkan nama profil" autocomplete="off"
+          style="width:100%; padding:8px 10px; border:1px solid #E8E2D9; border-radius:8px; background:#fff; font-size:13px; color:#1C1917; margin-top:4px;">
+      </div>
+      <div class="modal-actions" style="margin-top: 16px;">
+        <button id="cancelDeleteProfileBtn" class="btn btn-secondary">Batal</button>
+        <button id="confirmDeleteProfileBtn" class="btn btn-danger" disabled>Hapus Permanen</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let pin = localStorage.getItem('hermes_pin') || '';
     (async () => {
@@ -587,6 +605,10 @@
       }
       if (document.getElementById('profileModal').style.display === 'flex') {
         document.getElementById('profileModal').style.display = 'none';
+      }
+      if (document.getElementById('deleteProfileModal').style.display === 'flex') {
+        document.getElementById('deleteProfileModal').style.display = 'none';
+        _deleteTarget = null;
       }
     });
 
@@ -975,6 +997,18 @@
       
       card.appendChild(icon);
       card.appendChild(txt);
+      if (!p.active && p.name !== '(Default)' && /\\profiles\\/.test(p.path)) {
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.textContent = 'Hapus';
+        delBtn.title = 'Hapus profil ini permanen';
+        delBtn.style.cssText = 'flex-shrink:0; padding:6px 10px; border:1px solid #FCA5A5; border-radius:6px; background:#FEF2F2; color:#DC2626; font-size:12px; font-weight:600; cursor:pointer;';
+        delBtn.onclick = (e) => {
+          e.stopPropagation();
+          openDeleteProfileModal(p);
+        };
+        card.appendChild(delBtn);
+      }
       
       card.onclick = async () => {
         if (p.active) return;
@@ -1005,6 +1039,57 @@
 
   document.getElementById('closeProfileModalBtn').addEventListener('click', () => {
     document.getElementById('profileModal').style.display = 'none';
+  });
+
+  let _deleteTarget = null;
+
+  function openDeleteProfileModal(p) {
+    _deleteTarget = p;
+    const desc = document.getElementById('deleteProfileDesc');
+    desc.innerHTML = '';
+    desc.appendChild(document.createTextNode('Anda akan menghapus profil '));
+    const b = document.createElement('b');
+    b.textContent = p.name;
+    desc.appendChild(b);
+    desc.appendChild(document.createTextNode(' secara permanen.'));
+    desc.appendChild(document.createElement('br'));
+    desc.appendChild(document.createTextNode('Semua config, memori, dan skills di folder ini akan hilang dan tidak bisa dikembalikan.'));
+    const input = document.getElementById('deleteProfileInput');
+    input.value = '';
+    document.getElementById('confirmDeleteProfileBtn').disabled = true;
+    document.getElementById('deleteProfileModal').style.display = 'flex';
+    history.pushState({ deleteProfileModalOpen: true }, '');
+    setTimeout(() => input.focus(), 50);
+  }
+
+  document.getElementById('deleteProfileInput').addEventListener('input', () => {
+    const ok = document.getElementById('deleteProfileInput').value.trim() === (_deleteTarget ? _deleteTarget.name : '');
+    document.getElementById('confirmDeleteProfileBtn').disabled = !ok;
+  });
+
+  document.getElementById('cancelDeleteProfileBtn').addEventListener('click', () => {
+    document.getElementById('deleteProfileModal').style.display = 'none';
+    _deleteTarget = null;
+  });
+
+  document.getElementById('confirmDeleteProfileBtn').addEventListener('click', async () => {
+    if (!_deleteTarget) return;
+    const btn = document.getElementById('confirmDeleteProfileBtn');
+    btn.disabled = true;
+    btn.textContent = 'Menghapus...';
+    try {
+      const res = await fetch('/api/hermes/profile/delete', { method:'POST', headers:{ 'Content-Type':'application/json', 'X-Hermes-PIN': pin }, body: JSON.stringify({ path: _deleteTarget.path }) });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'gagal menghapus');
+      document.getElementById('deleteProfileModal').style.display = 'none';
+      _deleteTarget = null;
+      document.getElementById('profileStatus').textContent = 'Profil dihapus. Memuat ulang...';
+      setTimeout(() => location.reload(), 500);
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = 'Hapus Permanen';
+      document.getElementById('profileStatus').textContent = 'Error: ' + e.message;
+    }
   });
 
   loadProfilesData();
