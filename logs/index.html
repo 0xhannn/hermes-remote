@@ -284,16 +284,21 @@
 
     function renderSummary(summary) {
       let worst = 'ok';
-      for (const item of summary) {
-        if (item.level === 'error') { worst = 'error'; break; }
-        if (item.level === 'warning' && worst === 'ok') worst = 'warning';
-      }
-
       const hero = document.getElementById('healthHero');
-      hero.className = 'health-hero ' + worst;
       const title = document.getElementById('healthTitle');
       const sub = document.getElementById('healthSub');
 
+      const list = document.getElementById('diagnosisList');
+      window._dxSessions = {};
+      window._dxProviders = {};
+      let _dim = []; try { _dim = JSON.parse(localStorage.getItem('dxDismissed') || '[]'); } catch (e) {}
+      const _visible = summary.filter(item => !_dim.includes(item.title));
+      worst = 'ok';
+      for (const item of _visible) {
+        if (item.level === 'error') { worst = 'error'; break; }
+        if (item.level === 'warning' && worst === 'ok') worst = 'warning';
+      }
+      hero.className = 'health-hero ' + worst;
       if (worst === 'error') {
         title.textContent = 'Ada masalah dengan Hermes';
         sub.textContent = 'Butuh perhatian. Lihat rincian berikut.';
@@ -304,12 +309,6 @@
         title.textContent = 'Hermes berjalan normal';
         sub.textContent = 'Tidak ada masalah terdeteksi.';
       }
-
-      const list = document.getElementById('diagnosisList');
-      window._dxSessions = {};
-      window._dxProviders = {};
-      let _dim = []; try { _dim = JSON.parse(localStorage.getItem('dxDismissed') || '[]'); } catch (e) {}
-      const _visible = summary.filter(item => !_dim.includes(item.title));
       list.innerHTML = _visible.map(item => {
         const badge = item.level === 'ok' ? 'ok' : item.level;
         const hintHtml = item.hint
