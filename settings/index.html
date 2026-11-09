@@ -424,11 +424,12 @@
 
       <div class="db-location-box" style="margin-top: 10px;">
         <div class="db-location-label">Profil Aktif</div>
-        <select id="profileSelect" style="width:100%; padding:8px 10px; border:1px solid #E8E2D9; border-radius:8px; background:#fff; font-size:13px; color:#1C1917;"></select>
+        <div id="activeProfileName" style="font-size:13px; font-weight:600; color:#1C1917; margin-top:4px;">(memuat...)</div>
+        <div id="activeProfilePath" style="font-size:11px; color:#78716C; margin-top:2px;"></div>
       </div>
 
       <div class="btn-row" style="margin-top: 10px;">
-        <button id="applyProfileBtn" class="btn btn-primary" type="button">Terapkan</button>
+        <button id="openProfileModalBtn" class="btn btn-primary" type="button">Pilih Profil</button>
       </div>
       <div id="profileStatus" style="margin-top:8px; font-size:12px; color:#78716C;"></div>
     </div>
@@ -509,6 +510,23 @@
     </div>
   </div>
 
+
+  <!-- Profile Selector Modal -->
+  <div id="profileModal" class="modal-backdrop">
+    <div class="modal-box" style="max-width: 640px;">
+      <div class="modal-title">Pilih Profil Hermes</div>
+      <div class="modal-desc" style="margin-bottom: 12px;">Pilih profil untuk diaktifkan. Tiap profil menyimpan config, memori, dan skills terpisah.</div>
+      
+      <div id="profileList" style="display:flex; flex-direction:column; gap:10px; max-height:60vh; overflow-y:auto; margin-bottom:16px;">
+        <div style="font-size:12px; color:var(--text-muted);">Memuat profil...</div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="closeProfileModalBtn" class="btn btn-secondary">Tutup</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let pin = localStorage.getItem('hermes_pin') || '';
     (async () => {
@@ -566,6 +584,9 @@
       }
       if (document.getElementById('exportModal').style.display === 'flex') {
         closeExportModal();
+      }
+      if (document.getElementById('profileModal').style.display === 'flex') {
+        document.getElementById('profileModal').style.display = 'none';
       }
     });
 
@@ -894,56 +915,99 @@
         reader.readAsDataURL(file);
       });
     });
-  // Profile selector
-  async function loadProfiles() {
-    const sel = document.getElementById('profileSelect');
-    const status = document.getElementById('profileStatus');
+  // Profile selector modal
+  let _profiles = [];
+  let _activeProfilePath = '';
+
+  async function loadProfilesData() {
     try {
       const res = await fetch('/api/hermes/profiles/list', { headers: { 'X-Hermes-PIN': pin } });
       const data = await res.json();
       if (!data.success) throw new Error(data.error || 'gagal memuat profil');
-      sel.innerHTML = '';
-      const resetOpt = document.createElement('option');
-      resetOpt.value = '__default__';
-      resetOpt.textContent = '(Default — reset)';
-      sel.appendChild(resetOpt);
-      data.profiles.forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p.path;
-        opt.textContent = p.name + (p.active ? ' (aktif)' : '') + ' — ' + p.path;
-        if (p.active) opt.selected = true;
-        sel.appendChild(opt);
-      });
-      sel.dataset.active = data.active || '';
-      status.textContent = '';
+      _profiles = data.profiles;
+      _activeProfilePath = data.active || '';
+      updateActiveDisplay();
     } catch (e) {
-      status.textContent = 'Gagal memuat profil: ' + e.message;
+      document.getElementById('profileStatus').textContent = 'Gagal memuat profil: ' + e.message;
     }
   }
 
-  document.getElementById('applyProfileBtn').addEventListener('click', async () => {
-    const sel = document.getElementById('profileSelect');
-    const status = document.getElementById('profileStatus');
-    const path = sel.value;
-    if (!path) return;
-    status.textContent = 'Menerapkan...';
-    try {
-      let res;
-      if (path === '__default__') {
-        res = await fetch('/api/hermes/profile/reset', { method:'POST', headers:{ 'Content-Type':'application/json', 'X-Hermes-PIN': pin }, body:'{}' });
-      } else {
-        res = await fetch('/api/hermes/profile/switch', { method:'POST', headers:{ 'Content-Type':'application/json', 'X-Hermes-PIN': pin }, body: JSON.stringify({ path }) });
-      }
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error || 'gagal');
-      status.textContent = 'Berhasil diterapkan. Memuat ulang...';
-      setTimeout(() => location.reload(), 500);
-    } catch (e) {
-      status.textContent = 'Error: ' + e.message;
+  function updateActiveDisplay() {
+    const active = _profiles.find(p => p.active);
+    if (active) {
+      document.getElementById('activeProfileName').textContent = active.name;
+      document.getElementById('activeProfilePath').textContent = active.path;
+    } else {
+      document.getElementById('activeProfileName').textContent = '(tidak diketahui)';
+      document.getElementById('activeProfilePath').textContent = '';
     }
+  }
+
+  function renderProfileModal() {
+    const list = document.getElementById('profileList');
+    list.innerHTML = '';
+    _profiles.forEach(p => {
+      const card = document.createElement('div');
+      card.style.cssText = 'display:flex; align-items:center; gap:12px; padding:12px; background:var(--bg-card); border:1px solid var(--card-border); border-radius:8px; cursor:pointer; transition:all 0.15s;';
+      if (p.active) {
+        card.style.borderColor = 'var(--accent)';
+        card.style.background = '#EFF6FF';
+      }
+      card.onmouseover = () => { if (!p.active) card.style.background = '#F5F0E6'; };
+      card.onmouseout = () => { if (!p.active) card.style.background = 'var(--bg-card)'; };
+      
+      const icon = document.createElement('div');
+      icon.innerHTML = p.active 
+        ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>'
+        : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#78716C" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>';
+      icon.style.flexShrink = '0';
+      
+      const txt = document.createElement('div');
+      txt.style.flex = '1';
+      const name = document.createElement('div');
+      name.style.cssText = 'font-size:14px; font-weight:600; color:#1C1917;';
+      name.textContent = p.name;
+      const path = document.createElement('div');
+      path.style.cssText = 'font-size:11px; color:#78716C; margin-top:2px;';
+      path.textContent = p.path;
+      txt.appendChild(name);
+      txt.appendChild(path);
+      
+      card.appendChild(icon);
+      card.appendChild(txt);
+      
+      card.onclick = async () => {
+        if (p.active) return;
+        document.getElementById('profileStatus').textContent = 'Menerapkan...';
+        try {
+          const isReset = p.name === '(Default)';
+          const endpoint = isReset ? '/api/hermes/profile/reset' : '/api/hermes/profile/switch';
+          const body = isReset ? '{}' : JSON.stringify({ path: p.path });
+          const res = await fetch(endpoint, { method:'POST', headers:{ 'Content-Type':'application/json', 'X-Hermes-PIN': pin }, body });
+          const data = await res.json();
+          if (!data.success) throw new Error(data.error || 'gagal');
+          document.getElementById('profileStatus').textContent = 'Berhasil. Memuat ulang...';
+          setTimeout(() => location.reload(), 500);
+        } catch (e) {
+          document.getElementById('profileStatus').textContent = 'Error: ' + e.message;
+        }
+      };
+      
+      list.appendChild(card);
+    });
+  }
+
+  document.getElementById('openProfileModalBtn').addEventListener('click', () => {
+    renderProfileModal();
+    document.getElementById('profileModal').style.display = 'flex';
+    history.pushState({ profileModalOpen: true }, '');
   });
 
-  loadProfiles();
+  document.getElementById('closeProfileModalBtn').addEventListener('click', () => {
+    document.getElementById('profileModal').style.display = 'none';
+  });
+
+  loadProfilesData();
 
   </script>
   <script src="/assets/auth-guard.js"></script>
