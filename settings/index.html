@@ -37,15 +37,11 @@
       outline: none;
     }
     /* Hide default scrollbar across all browsers */
-    html, body, .card, .modal-box, .skills-checklist {
+    html, body, * {
       scrollbar-width: none; /* Firefox */
       -ms-overflow-style: none; /* IE/Edge */
     }
-    html::-webkit-scrollbar,
-    body::-webkit-scrollbar,
-    .card::-webkit-scrollbar,
-    .modal-box::-webkit-scrollbar,
-    .skills-checklist::-webkit-scrollbar {
+    *::-webkit-scrollbar {
       display: none; /* Chrome, Safari, Opera */
     }
     body {
