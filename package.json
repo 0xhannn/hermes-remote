@@ -1,6 +1,6 @@
 {
   "name": "hermes-remote",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "description": "Full-spectrum local-first web control center and system manager for Hermes Agent",
   "main": "bin/cli.js",
   "files": [
@@ -31,12 +31,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/0xhannn/hermes-config-remote.git"
+    "url": "https://github.com/0xhannn/hermes-remote.git"
   },
   "bugs": {
-    "url": "https://github.com/0xhannn/hermes-config-remote/issues"
+    "url": "https://github.com/0xhannn/hermes-remote/issues"
   },
-  "homepage": "https://github.com/0xhannn/hermes-config-remote#readme",
+  "homepage": "https://github.com/0xhannn/hermes-remote#readme",
   "engines": {
     "node": ">=16.0.0"
   }
