@@ -135,6 +135,8 @@
     .dx-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
     .dx-fix-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--blue-soft); color: var(--blue-dev); border: 1px solid var(--blue-border); border-radius: 8px; padding: 8px 14px; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
     .dx-fix-btn:hover { border-color: var(--blue-dev); }
+    .fix-key-input { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--blue-border); border-radius: 8px; font-family: inherit; font-size: 14px; background: #fff; margin-top: 4px; }
+    .fix-key-input:focus { outline: none; border-color: var(--blue-dev); }
     .confirm-backdrop { position: fixed; inset: 0; background: rgba(28, 25, 23, 0.35); display: flex; align-items: center; justify-content: center; z-index: 1000; }
     .confirm-box { background: var(--bg-card); border: 1px solid var(--card-border); border-radius: 12px; padding: 20px; max-width: 380px; width: 90%; box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
     .confirm-title { font-size: 15px; font-weight: 800; margin-bottom: 8px; }
@@ -305,6 +307,7 @@
 
       const list = document.getElementById('diagnosisList');
       window._dxSessions = {};
+      window._dxProviders = {};
       list.innerHTML = summary.map(item => {
         const badge = item.level === 'ok' ? 'ok' : item.level;
         const hintHtml = item.hint
@@ -312,13 +315,15 @@
           : '';
         const countHtml = item.count > 1 ? '<span class="dx-count">terjadi ' + item.count + 'x</span>' : '';
         if (item.session_ids && item.session_ids.length > 0) window._dxSessions[item.title] = item.session_ids;
+        if (item.provider_names && item.provider_names.length > 0) window._dxProviders[item.title] = item.provider_names;
+        let fixBtn = '';
+        if (item.provider_names && item.provider_names.length > 0) {
+          fixBtn = '<div class="dx-actions"><button type="button" class="dx-fix-btn" data-action="fix-provider"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Perbaiki: masukkan API key</button></div>';
+        }
         return '<div class="dx-item">' +
           '<div class="dx-head"><span class="dx-badge ' + badge + '">' + badge + '</span>' +
           '<span class="dx-title">' + escapeHtml(item.title) + '</span>' + countHtml + '</div>' +
-          '<div class="dx-message">' + escapeHtml(item.message) + '</div>' + hintHtml +
-          (item.session_ids && item.session_ids.length > 0
-            ? '<div class="dx-actions"><button type="button" class="dx-fix-btn" data-action="fix-sessions"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>Hapus ' + item.session_ids.length + ' sesi lama</button></div>'
-            : '') +
+          '<div class="dx-message">' + escapeHtml(item.message) + '</div>' + hintHtml + fixBtn +
           '</div>';
       }).join('');
     }
@@ -382,26 +387,33 @@
     document.getElementById('refreshLogsBtn').addEventListener('click', loadLogs);
 
     loadLogs();
-    // --- Aksi perbaikan ---
-    let _pendingFixSessions = null;
+    // --- Aksi perbaikan: masukkan ulang API key provider ---
+    let _pendingProvider = null;
     const backdrop = document.getElementById('confirmBackdrop');
-    const doClose = () => { backdrop.style.display = 'none'; _pendingFixSessions = null; };
+    const doClose = () => { backdrop.style.display = 'none'; _pendingProvider = null; };
 
     document.getElementById('confirmCancel').addEventListener('click', doClose);
     document.getElementById('confirmOk').addEventListener('click', async () => {
-      const sids = _pendingFixSessions;
+      const provider = _pendingProvider;
+      const keyInput = document.getElementById('fixApiKey');
+      const apiKey = keyInput ? keyInput.value.trim() : '';
+      if (!provider) return;
+      if (!apiKey) {
+        const s = document.getElementById('healthSub');
+        if (s) s.textContent = 'API key wajib diisi.';
+        return;
+      }
       doClose();
-      if (!sids || sids.length === 0) return;
       try {
-        const res = await fetch('/api/hermes/logs/fix-session-credentials', {
+        const res = await fetch('/api/hermes/provider/edit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify({ session_ids: sids })
+          body: JSON.stringify({ name: provider, api_key: apiKey })
         });
         const data = await res.json();
         const s = document.getElementById('healthSub');
         if (data.success) {
-          if (s) s.textContent = data.message + '. Memuat ulang...';
+          if (s) s.textContent = 'API key ' + provider + ' diperbarui. Memuat ulang...';
         } else {
           if (s) s.textContent = 'Gagal: ' + (data.error || 'kesalahan tidak dikenal');
         }
@@ -416,19 +428,25 @@
       const btn = e.target.closest('.dx-fix-btn');
       if (!btn) return;
       const title = btn.closest('.dx-item').querySelector('.dx-title').textContent;
-      const sids = (window._dxSessions || {})[title];
-      if (!sids || sids.length === 0) return;
-      _pendingFixSessions = sids;
+      const providers = (window._dxProviders || {})[title];
+      if (!providers || providers.length === 0) return;
+      _pendingProvider = providers[0];
+      const keyInput = document.getElementById('fixApiKey');
+      if (keyInput) keyInput.value = '';
+      const lbl = document.getElementById('fixProviderLabel');
+      if (lbl) lbl.textContent = 'Provider: ' + providers.join(', ');
       backdrop.style.display = 'flex';
     });
   </script>
   <div class="confirm-backdrop" id="confirmBackdrop" style="display:none">
     <div class="confirm-box">
-      <div class="confirm-title">Hapus sesi lama?</div>
-      <div class="confirm-text" id="confirmText">Sesi yang memakai API key lama akan dihapus. Hermes akan membuat sesi baru otomatis saat Anda memulai percakapan berikutnya. Tindakan ini tidak bisa dibatalkan.</div>
+      <div class="confirm-title">Perbaiki API key</div>
+      <div class="confirm-text" id="fixProviderLabel">Provider tidak dikenal.</div>
+      <input type="password" id="fixApiKey" class="fix-key-input" placeholder="masukkan API key baru" autocomplete="off" spellcheck="false">
+      <div class="confirm-text" style="margin-top:8px;opacity:.75">API key akan disimpan ke provider ini dan sesi lama otomatis terhubung ulang.</div>
       <div class="confirm-actions">
         <button type="button" class="btn-cancel" id="confirmCancel">Batal</button>
-        <button type="button" class="btn-danger" id="confirmOk">Hapus</button>
+        <button type="button" class="btn-danger" id="confirmOk">Simpan</button>
       </div>
     </div>
   </div>
