@@ -149,7 +149,45 @@ def _looks_like_hermes(p):
     return False
 
 
+_ACTIVE_HOME = None
+
+def _get_active_home():
+    if _ACTIVE_HOME and os.path.isdir(_ACTIVE_HOME) and _looks_like_hermes(_ACTIVE_HOME):
+        return _ACTIVE_HOME
+    return None
+
+def _set_active_home(path):
+    global _ACTIVE_HOME
+    if path and os.path.isdir(path) and _looks_like_hermes(path):
+        _ACTIVE_HOME = os.path.abspath(path)
+        return True
+    _ACTIVE_HOME = None
+    return False
+
+def list_hermes_profiles():
+    base = _hermes_config_dir()
+    profiles = []
+    seen = set()
+    active = _get_active_home() or os.path.abspath(base)
+    def add(p, name):
+        p = os.path.abspath(p)
+        if p in seen or not _looks_like_hermes(p):
+            return
+        seen.add(p)
+        profiles.append({"name": name, "path": p, "active": bool(active) and (p == active)})
+    add(base, "(Default)")
+    prof_root = os.path.join(base, "profiles")
+    if os.path.isdir(prof_root):
+        for entry in sorted(os.listdir(prof_root)):
+            cand = os.path.join(prof_root, entry)
+            if os.path.isdir(cand):
+                add(cand, entry)
+    return {"success": True, "active": active, "profiles": profiles}
+
 def _hermes_config_dir():
+    active = _get_active_home()
+    if active:
+        return active
     cands = []
     if sys.platform == "win32":
         local = os.environ.get("LOCALAPPDATA", os.path.expanduser("~\\AppData\\Local"))
@@ -179,9 +217,9 @@ CONFIG_PATH = os.environ.get("HERMES_CONFIG_PATH", os.path.join(_hermes_config_d
 PIN_FILE = os.path.join(_hermes_config_dir(), ".pin_secret")
 
 def get_current_pin():
-    if os.path.exists(PIN_FILE):
+    if os.path.exists(os.path.join(_hermes_config_dir(), ".pin_secret")):
         try:
-            with open(PIN_FILE, "r", encoding="utf-8") as f:
+            with open(os.path.join(_hermes_config_dir(), ".pin_secret"), "r", encoding="utf-8") as f:
                 saved = f.read().strip()
                 if saved:
                     return saved
@@ -190,8 +228,8 @@ def get_current_pin():
     return os.environ.get("HERMES_PIN_SECRET", "123456")
 
 def set_current_pin(new_pin):
-    os.makedirs(os.path.dirname(PIN_FILE), exist_ok=True)
-    with open(PIN_FILE, "w", encoding="utf-8") as f:
+    os.makedirs(os.path.dirname(os.path.join(_hermes_config_dir(), ".pin_secret")), exist_ok=True)
+    with open(os.path.join(_hermes_config_dir(), ".pin_secret"), "w", encoding="utf-8") as f:
         f.write(new_pin.strip())
 
 
@@ -221,11 +259,11 @@ def _write_memory_entries(target, entries):
     os.replace(tmp, path)
 
 def load_yaml():
-    if not os.path.exists(CONFIG_PATH):
+    if not os.path.exists(os.path.join(_hermes_config_dir(), "config.yaml")):
         return {}
     if yaml is not None:
         try:
-            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+            with open(os.path.join(_hermes_config_dir(), "config.yaml"), "r", encoding="utf-8") as f:
                 return yaml.safe_load(f) or {}
         except Exception:
             pass
@@ -234,12 +272,12 @@ def load_yaml():
 def save_yaml(data):
     if yaml is not None:
         try:
-            with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+            with open(os.path.join(_hermes_config_dir(), "config.yaml"), "w", encoding="utf-8") as f:
                 yaml.dump(data, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
             return
         except Exception:
             pass
-    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+    with open(os.path.join(_hermes_config_dir(), "config.yaml"), "w", encoding="utf-8") as f:
         f.write(json.dumps(data, ensure_ascii=False, indent=2))
 
 
@@ -916,6 +954,12 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
                 "user": _read_memory_entries("user"),
             })
 
+        if path == "/api/hermes/profiles/list":
+            try:
+                return self._send_json(200, list_hermes_profiles())
+            except Exception as e:
+                return self._send_json(500, {"success": False, "error": str(e)})
+
         return self._send_json(404, {"success": False, "error": "Endpoint not found"})
 
     def do_POST(self):
@@ -943,6 +987,20 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
 
         if not self._check_auth():
             return self._send_json(401, {"success": False, "error": "Unauthorized: PIN diperlukan"})
+
+        if path == "/api/hermes/profile/switch":
+            target = body.get("path", "").strip()
+            if not target:
+                return self._send_json(400, {"success": False, "error": "Path profil wajib diisi"})
+            if not os.path.isdir(target) or not _looks_like_hermes(target):
+                return self._send_json(400, {"success": False, "error": "Path profil tidak valid"})
+            if _set_active_home(target):
+                return self._send_json(200, {"success": True, "active": target})
+            return self._send_json(400, {"success": False, "error": "Gagal mengaktifkan profil"})
+
+        if path == "/api/hermes/profile/reset":
+            _set_active_home(None)
+            return self._send_json(200, {"success": True, "active": _hermes_config_dir()})
 
         if path == "/api/hermes/auth/change-pin":
             old_pin = body.get("old_pin", "").strip()
