@@ -26,6 +26,9 @@
       --danger-red: #DC2626;
       --danger-bg: #FEE2E2;
       --danger-border: #FCA5A5;
+      --amber: #B45309;
+      --amber-bg: #FEF3C7;
+      --amber-border: #FCD34D;
       --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
       --font-mono: 'JetBrains Mono', monospace;
     }
@@ -49,190 +52,111 @@
       font-family: var(--font-sans);
       min-height: 100vh;
     }
-    .container {
-      width: 100%;
-      max-width: 100%;
-    }
-    header {
-      display: block;
-      margin-bottom: 32px;
-    }
+    .container { width: 100%; max-width: 100%; }
+    header { display: block; margin-bottom: 32px; }
     .brand-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 8px;
-      flex-wrap: wrap;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; margin-bottom: 8px; flex-wrap: wrap;
     }
     .status-pill {
-      background: var(--bg-card);
-      border: 1px solid var(--card-border);
-      padding: 6px 12px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text-muted);
-      font-family: var(--font-mono);
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
+      background: var(--bg-card); border: 1px solid var(--card-border);
+      padding: 6px 12px; border-radius: 999px; font-size: 12px;
+      font-weight: 600; color: var(--text-muted); font-family: var(--font-mono);
+      display: inline-flex; align-items: center; gap: 6px;
     }
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      background-color: #10B981;
-      border-radius: 50%;
-    }
-    h1 {
-      font-size: 28px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      color: var(--text-main);
-      margin-top: 6px;
-    }
-    .subtitle {
-      color: var(--text-muted);
-      font-size: 14px;
-      margin-top: 4px;
-    }
+    .status-dot { width: 8px; height: 8px; background-color: #10B981; border-radius: 50%; }
+    h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; color: var(--text-main); margin-top: 6px; }
+    .subtitle { color: var(--text-muted); font-size: 14px; margin-top: 4px; }
     .card {
-      background: var(--bg-card);
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      margin-bottom: 24px;
+      background: var(--bg-card); border: 1px solid var(--card-border);
+      border-radius: 12px; padding: 24px; display: flex; flex-direction: column;
+      gap: 16px; margin-bottom: 24px;
     }
-    .card-title {
-      font-size: 16px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .card-desc {
-      font-size: 13px;
-      color: var(--text-muted);
-      margin-top: -8px;
-    }
+    .card-title { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .card-desc { font-size: 13px; color: var(--text-muted); margin-top: -8px; }
     .btn {
-      font-family: var(--font-sans);
-      font-size: 13px;
-      font-weight: 600;
-      padding: 8px 16px;
-      border-radius: 8px;
-      border: 1px solid var(--card-border);
-      background: #FFFFFF;
-      color: var(--text-main);
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      text-decoration: none;
+      font-family: var(--font-sans); font-size: 13px; font-weight: 600;
+      padding: 8px 16px; border-radius: 8px; border: 1px solid var(--card-border);
+      background: #FFFFFF; color: var(--text-main); cursor: pointer;
+      display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
       transition: all 0.15s ease;
     }
-    .btn:hover {
-      background: var(--bg-subtle);
-      border-color: var(--blue-border);
+    .btn:hover { background: var(--bg-subtle); border-color: var(--blue-border); }
+    .btn-primary { background: var(--blue-dev); color: #FFFFFF; border-color: var(--blue-dev); }
+    .btn-primary:hover { background: var(--blue-hover); }
+    .btn-row { display: flex; gap: 12px; flex-wrap: wrap; }
+
+    /* Mode switch tabs */
+    .mode-tabs { display: flex; gap: 8px; flex-wrap: wrap; border-bottom: 1px solid var(--card-border); padding-bottom: 12px; }
+    .mode-tab {
+      font-family: var(--font-sans); font-size: 13px; font-weight: 600;
+      padding: 8px 16px; border-radius: 999px; border: 1px solid var(--card-border);
+      background: var(--bg-card); color: var(--text-muted); cursor: pointer;
+      display: inline-flex; align-items: center; gap: 8px; transition: all 0.15s ease;
     }
-    .btn-primary {
-      background: var(--blue-dev);
-      color: #FFFFFF;
-      border-color: var(--blue-dev);
+    .mode-tab:hover { border-color: var(--blue-border); color: var(--text-main); }
+    .mode-tab.is-active { background: var(--blue-soft); border-color: var(--blue-border); color: var(--blue-dev); font-weight: 700; }
+
+    /* Summary / health view */
+    .health-hero {
+      border-radius: 12px; padding: 20px; display: flex; align-items: center;
+      gap: 16px; border: 1px solid; flex-wrap: wrap;
     }
-    .btn-primary:hover {
-      background: var(--blue-hover);
-    }
-    .btn-row {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-    .log-tabs {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      border-bottom: 1px solid var(--card-border);
-      padding-bottom: 12px;
-    }
+    .health-hero.ok { background: var(--status-green-bg); border-color: #A7F3D0; }
+    .health-hero.warning { background: var(--amber-bg); border-color: var(--amber-border); }
+    .health-hero.error { background: var(--danger-bg); border-color: var(--danger-border); }
+    .health-icon { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .health-hero.ok .health-icon { background: var(--status-green); }
+    .health-hero.warning .health-icon { background: var(--amber); }
+    .health-hero.error .health-icon { background: var(--danger-red); }
+    .health-hero.ok .health-icon svg, .health-hero.warning .health-icon svg, .health-hero.error .health-icon svg { stroke: #FFF; }
+    .health-title { font-size: 18px; font-weight: 800; }
+    .health-sub { font-size: 13px; margin-top: 2px; }
+    .health-hero.ok .health-title { color: var(--status-green-text); }
+    .health-hero.ok .health-sub { color: var(--status-green-text); }
+    .health-hero.warning .health-title { color: #78350F; }
+    .health-hero.warning .health-sub { color: #78350F; }
+    .health-hero.error .health-title { color: var(--danger-red); }
+    .health-hero.error .health-sub { color: var(--danger-red); }
+
+    .diagnosis { display: flex; flex-direction: column; gap: 12px; }
+    .dx-item { border: 1px solid var(--card-border); border-radius: 10px; padding: 16px; background: var(--bg-card); }
+    .dx-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .dx-badge { font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 3px 10px; border-radius: 999px; }
+    .dx-badge.warning { background: var(--amber-bg); color: var(--amber); }
+    .dx-badge.error { background: var(--danger-bg); color: var(--danger-red); }
+    .dx-badge.info { background: var(--blue-soft); color: var(--blue-dev); }
+    .dx-badge.ok { background: var(--status-green-bg); color: var(--status-green-text); }
+    .dx-title { font-size: 15px; font-weight: 700; flex: 1; }
+    .dx-count { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+    .dx-message { font-size: 13px; color: var(--text-main); margin-top: 8px; line-height: 1.5; }
+    .dx-hint { font-size: 13px; margin-top: 8px; padding: 10px 12px; background: var(--bg-subtle); border-radius: 8px; color: var(--text-muted); display: flex; gap: 8px; align-items: flex-start; }
+    .dx-hint svg { flex-shrink: 0; margin-top: 1px; }
+
+    /* Raw log view */
+    .log-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
     .log-tab {
-      font-family: var(--font-mono);
-      font-size: 12px;
-      font-weight: 600;
-      padding: 6px 14px;
-      border-radius: 999px;
-      border: 1px solid var(--card-border);
-      background: var(--bg-card);
-      color: var(--text-muted);
-      cursor: pointer;
-      transition: all 0.15s ease;
+      font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+      padding: 6px 14px; border-radius: 999px; border: 1px solid var(--card-border);
+      background: var(--bg-card); color: var(--text-muted); cursor: pointer; transition: all 0.15s ease;
     }
-    .log-tab:hover {
-      border-color: var(--blue-border);
-      color: var(--text-main);
-    }
-    .log-tab.is-active {
-      background: var(--blue-soft);
-      border-color: var(--blue-border);
-      color: var(--blue-dev);
-      font-weight: 700;
-    }
-    .log-panel {
-      background: var(--bg-subtle);
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
-      padding: 16px;
-      max-height: 480px;
-      overflow-y: auto;
-    }
-    .log-line {
-      font-family: var(--font-mono);
-      font-size: 12px;
-      line-height: 1.6;
-      color: var(--text-main);
-      white-space: pre-wrap;
-      word-break: break-word;
-      padding: 2px 0;
-      border-bottom: 1px solid rgba(232, 226, 217, 0.5);
-    }
-    .log-line:last-child {
-      border-bottom: none;
-    }
-    .log-line .log-time {
-      color: var(--text-muted);
-    }
-    .log-line .log-level-info {
-      color: var(--blue-dev);
-      font-weight: 600;
-    }
-    .log-line .log-level-warning {
-      color: #B45309;
-      font-weight: 600;
-    }
-    .log-line .log-level-error {
-      color: var(--danger-red);
-      font-weight: 600;
-    }
-    .log-empty {
-      font-size: 13px;
-      color: var(--text-muted);
-      padding: 8px 0;
-    }
-    footer {
-      margin-top: 40px;
-      font-size: 12px;
-      font-family: 'JetBrains Mono', monospace;
-      color: var(--text-muted);
-      text-align: center;
-    }
+    .log-tab:hover { border-color: var(--blue-border); color: var(--text-main); }
+    .log-tab.is-active { background: var(--blue-soft); border-color: var(--blue-border); color: var(--blue-dev); font-weight: 700; }
+    .log-panel { background: var(--bg-subtle); border: 1px solid var(--card-border); border-radius: 8px; padding: 16px; max-height: 480px; overflow-y: auto; }
+    .log-line { font-family: var(--font-mono); font-size: 12px; line-height: 1.6; color: var(--text-main); white-space: pre-wrap; word-break: break-word; padding: 2px 0; border-bottom: 1px solid rgba(232, 226, 217, 0.5); }
+    .log-line:last-child { border-bottom: none; }
+    .log-line .log-time { color: var(--text-muted); }
+    .log-line .log-level-info { color: var(--blue-dev); font-weight: 600; }
+    .log-line .log-level-warning { color: var(--amber); font-weight: 600; }
+    .log-line .log-level-error { color: var(--danger-red); font-weight: 600; }
+    .log-empty { font-size: 13px; color: var(--text-muted); padding: 8px 0; }
+    footer { margin-top: 40px; font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--text-muted); text-align: center; }
     @media (max-width: 767px) {
       body { padding: 0; }
       .card { padding: 14px 16px; border-radius: 12px; }
       .btn { min-height: 44px; }
       .log-panel { max-height: 400px; }
+      .health-hero { padding: 16px; }
     }
   </style>
   <link rel="stylesheet" href="/assets/ui-enhancements.css?v=8">
@@ -268,7 +192,7 @@
         <div class="status-pill"><span class="status-dot"></span> AKTIVITAS AGEN</div>
       </div>
       <h1>Log</h1>
-      <p class="subtitle">Log aktivitas Hermes agent: riwayat agent, error, dan gateway.</p>
+      <p class="subtitle">Lihat kondisi Hermes dalam bahasa sederhana, atau telusuri log mentah bila perlu.</p>
     </header>
 
     <div class="card">
@@ -276,19 +200,44 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         Log Aktivitas
       </div>
-      <div class="card-desc">100 baris terakhir tiap file log. Mudah menelusuri aktivitas agent tanpa terminal.</div>
+      <div class="card-desc">Ringkasan otomatis untuk semua kalangan, dengan log mentah untuk pemeriksaan mendalam.</div>
 
-      <div class="log-tabs" role="tablist">
-        <button class="log-tab is-active" data-log="agent.log" role="tab">agent.log</button>
-        <button class="log-tab" data-log="errors.log" role="tab">errors.log</button>
-        <button class="log-tab" data-log="gateway.log" role="tab">gateway.log</button>
+      <div class="mode-tabs" role="tablist">
+        <button class="mode-tab is-active" data-mode="summary" role="tab">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Ringkasan
+        </button>
+        <button class="mode-tab" data-mode="raw" role="tab">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+          Log Mentah
+        </button>
       </div>
 
-      <div class="log-panel" id="logViewer">
-        <div class="log-empty" id="logEmpty">Memuat log...</div>
+      <!-- Summary view -->
+      <div id="summaryView">
+        <div id="healthHero" class="health-hero">
+          <div class="health-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div>
+            <div class="health-title" id="healthTitle">Memeriksa...</div>
+            <div class="health-sub" id="healthSub">Membaca log agent.</div>
+          </div>
+        </div>
+        <div class="diagnosis" id="diagnosisList" style="margin-top: 16px;"></div>
       </div>
 
-      <div class="btn-row">
+      <!-- Raw view -->
+      <div id="rawView" style="display:none;">
+        <div class="log-tabs">
+          <button class="log-tab is-active" data-log="agent.log" role="tab">agent.log</button>
+          <button class="log-tab" data-log="errors.log" role="tab">errors.log</button>
+          <button class="log-tab" data-log="gateway.log" role="tab">gateway.log</button>
+        </div>
+        <div class="log-panel" id="logViewer" style="margin-top: 12px;">
+          <div class="log-empty" id="logEmpty">Memuat log...</div>
+        </div>
+      </div>
+
+      <div class="btn-row" style="margin-top: 8px;">
         <button class="btn btn-primary" id="refreshLogsBtn">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
           Muat Ulang
@@ -303,28 +252,69 @@
 
   <script>
     let currentLog = 'agent.log';
+    let currentMode = 'summary';
     let logData = {};
 
+    const summaryView = document.getElementById('summaryView');
+    const rawView = document.getElementById('rawView');
     const logViewer = document.getElementById('logViewer');
-    const logEmpty = document.getElementById('logEmpty');
 
     function escapeHtml(s) {
       return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    function formatLogLine(line) {
-      // Parse: TIMESTAMP LEVEL logger: message
-      const m = line.match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d+)\s+(INFO|WARNING|ERROR|DEBUG|CRITICAL)\s+(.*)$/);
-      if (!m) {
-        return '<div class="log-line">' + escapeHtml(line) + '</div>';
+    function badgeIcon(level) {
+      if (level === 'warning') return '⚠️';
+      if (level === 'error') return '⛔';
+      return '';
+    }
+
+    function renderSummary(summary) {
+      let worst = 'ok';
+      for (const item of summary) {
+        if (item.level === 'error') { worst = 'error'; break; }
+        if (item.level === 'warning' && worst === 'ok') worst = 'warning';
       }
+
+      const hero = document.getElementById('healthHero');
+      hero.className = 'health-hero ' + worst;
+      const title = document.getElementById('healthTitle');
+      const sub = document.getElementById('healthSub');
+
+      if (worst === 'error') {
+        title.textContent = 'Ada masalah dengan Hermes';
+        sub.textContent = 'Butuh perhatian. Lihat rincian berikut.';
+      } else if (worst === 'warning') {
+        title.textContent = 'Hermes berjalan, tapi ada catatan';
+        sub.textContent = 'Tidak kritis, tapi sebaiknya dicek.';
+      } else {
+        title.textContent = 'Hermes berjalan normal';
+        sub.textContent = 'Tidak ada masalah terdeteksi.';
+      }
+
+      const list = document.getElementById('diagnosisList');
+      list.innerHTML = summary.map(item => {
+        const badge = item.level === 'ok' ? 'ok' : item.level;
+        const hintHtml = item.hint
+          ? '<div class="dx-hint"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span>' + escapeHtml(item.hint) + '</span></div>'
+          : '';
+        const countHtml = item.count > 1 ? '<span class="dx-count">terjadi ' + item.count + 'x</span>' : '';
+        return '<div class="dx-item">' +
+          '<div class="dx-head"><span class="dx-badge ' + badge + '">' + badge + '</span>' +
+          '<span class="dx-title">' + escapeHtml(item.title) + '</span>' + countHtml + '</div>' +
+          '<div class="dx-message">' + escapeHtml(item.message) + '</div>' + hintHtml +
+          '</div>';
+      }).join('');
+    }
+
+    function formatLogLine(line) {
+      const m = line.match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d+)\s+(INFO|WARNING|ERROR|DEBUG|CRITICAL)\s+(.*)$/);
+      if (!m) return '<div class="log-line">' + escapeHtml(line) + '</div>';
       const levelClass = 'log-level-' + m[2].toLowerCase();
       return '<div class="log-line"><span class="log-time">' + escapeHtml(m[1]) + '</span> <span class="' + levelClass + '">' + m[2] + '</span> ' + escapeHtml(m[3]) + '</div>';
     }
 
     async function loadLogs() {
-      logEmpty.textContent = 'Memuat log...';
-      logViewer.innerHTML = '<div class="log-empty">Memuat log...</div>';
       try {
         const res = await fetch('/api/hermes/logs', {
           method: 'GET',
@@ -332,13 +322,14 @@
         });
         const data = await res.json();
         if (!data.success) {
-          logViewer.innerHTML = '<div class="log-empty">Gagal memuat log.</div>';
+          summaryView.innerHTML = '<div class="log-empty">Gagal memuat log.</div>';
           return;
         }
         logData = data.logs || {};
+        if (data.summary) renderSummary(data.summary);
         renderCurrentLog();
       } catch (e) {
-        logViewer.innerHTML = '<div class="log-empty">Gagal terhubung ke server.</div>';
+        summaryView.innerHTML = '<div class="log-empty">Gagal terhubung ke server.</div>';
       }
     }
 
@@ -351,7 +342,18 @@
       logViewer.innerHTML = lines.map(formatLogLine).join('');
     }
 
-    // Tab switching
+    // Mode switching
+    document.querySelectorAll('.mode-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('is-active'));
+        tab.classList.add('is-active');
+        currentMode = tab.dataset.mode;
+        summaryView.style.display = currentMode === 'summary' ? 'block' : 'none';
+        rawView.style.display = currentMode === 'raw' ? 'block' : 'none';
+      });
+    });
+
+    // Raw file tabs
     document.querySelectorAll('.log-tab').forEach(tab => {
       tab.addEventListener('click', () => {
         document.querySelectorAll('.log-tab').forEach(t => t.classList.remove('is-active'));
@@ -363,7 +365,6 @@
 
     document.getElementById('refreshLogsBtn').addEventListener('click', loadLogs);
 
-    // Initial load
     loadLogs();
   </script>
   <script src="/assets/auth-guard.js"></script>

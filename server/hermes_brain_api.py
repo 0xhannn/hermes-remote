@@ -390,6 +390,52 @@ def skill_delete_crossplatform(name):
     shutil.rmtree(existing, ignore_errors=True)
     return {"success": True, "message": f"Skill '{name}' berhasil dihapus"}
 
+def _analyze_logs(logs):
+    """Detect common agent problems from raw log lines -> list of {level, message, hint, source}."""
+    summary = []
+    problems = {}
+    raw = {}
+
+    for name in ("agent.log", "errors.log", "gateway.log"):
+        lines = logs.get(name, [])
+        raw[name] = lines
+        joined = "\n".join(lines)
+
+        if "session_policy_credentials" in joined:
+            problems["api_key_mismatch"] = problems.get("api_key_mismatch", 0) + joined.count("session_policy_credentials")
+        if "Incorrect API key" in joined or "Invalid API key" in joined:
+            problems["api_key_rejected"] = problems.get("api_key_rejected", 0) + 1
+        if "Could not determine context length" in joined or "context length" in joined.lower():
+            problems["context_len"] = problems.get("context_len", 0) + 1
+        if "No messaging platforms enabled" in joined:
+            problems["no_platforms"] = problems.get("no_platforms", 0) + 1
+        if "tool_executor" in joined and ("error" in joined.lower() or "failed" in joined.lower()):
+            problems["tool_fail"] = problems.get("tool_fail", 0) + 1
+        if "Streaming failed" in joined:
+            problems["stream_fail"] = problems.get("stream_fail", 0) + 1
+        if "API call failed" in joined:
+            problems["api_fail"] = problems.get("api_fail", 0) + joined.count("API call failed")
+
+    if problems.get("api_key_mismatch"):
+        summary.append({"level":"warning","title":"Sesi memakai API key lama","message":"Ada sesi lama yang masih memakai API key yang tidak cocok dengan konfigurasi provider saat ini. Ini sering membuat Hermes gagal merespons atau bertingkah aneh.","hint":"Cek dan perbarui API key provider di halaman Brain, lalu mulai sesi baru.","source":"errors.log","count":problems["api_key_mismatch"]})
+    if problems.get("api_key_rejected"):
+        summary.append({"level":"error","title":"API key ditolak (401)","message":"Provider menolak API key yang dipakai. Hermes tidak bisa berkomunikasi dengan model.","hint":"Buka Brain, perbarui API key provider, lalu uji ulang.","source":"errors.log","count":problems["api_key_rejected"]})
+    if problems.get("api_fail"):
+        summary.append({"level":"warning","title":"Ada panggilan API yang gagal","message":"Beberapa panggilan ke API model sempat gagal. Hermes mencoba ulang, tapi ini bisa memperlambat respons.","hint":"Jika sering muncul, periksa stabilitas provider yang dipakai.","source":"agent.log","count":problems["api_fail"]})
+    if problems.get("stream_fail"):
+        summary.append({"level":"warning","title":"Streaming respons terputus","message":"Respons model terputus sebelum terkirim penuh. Hermes mungkin menjawab tidak lengkap.","hint":"Cek koneksi/provider saat ini di Brain.","source":"errors.log","count":problems["stream_fail"]})
+    if problems.get("context_len"):
+        summary.append({"level":"info","title":"Model tidak mendukung deteksi panjang konteks","message":"Model yang aktif tidak memberi tahu batas panjang konteksnya. Hermes tidak bisa mengelola konteks secara optimal.","hint":"Jika sering lupa konteks, pertimbangkan ganti model yang mendukung metadata konteks.","source":"agent.log","count":problems["context_len"]})
+    if problems.get("no_platforms"):
+        summary.append({"level":"error","title":"Tidak ada platform pesan aktif","message":"Hermes berjalan tanpa platform pesan yang aktif, jadi tidak bisa menerima/membalas pesan di mana pun.","hint":"Aktifkan minimal satu platform (WhatsApp, Telegram, dll) di konfigurasi Hermes.","source":"gateway.log","count":problems["no_platforms"]})
+    if problems.get("tool_fail"):
+        summary.append({"level":"info","title":"Beberapa alat (tool) gagal saat dipakai","message":"Ada kegagalan saat Hermes memakai alat tertentu. Ini wajar sesekali, tapi perlu diperhatikan jika sering.","hint":"Cek log untuk melihat alat mana yang gagal.","source":"agent.log","count":problems["tool_fail"]})
+
+    if not summary:
+        summary.append({"level":"ok","title":"Tidak ada masalah terdeteksi","message":"Log agent terlihat bersih. Hermes berjalan normal.","hint":"","source":"agent.log","count":0})
+
+    return summary
+
 class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
     def _send_cors(self):
         self.send_header("Access-Control-Allow-Origin", "*")
@@ -484,38 +530,27 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
 
         if path == "/api/hermes/logs":
             try:
-                hermes_dir = _hermes_config_dir()
-                logs_dir = os.path.join(hermes_dir, "logs")
-                
-                result = {
-                    "success": True,
-                    "logs": {}
-                }
-                
-                # Read 3 log files: agent.log, errors.log, gateway.log
-                log_files = ["agent.log", "errors.log", "gateway.log"]
-                
-                for log_name in log_files:
-                    log_path = os.path.join(logs_dir, log_name)
+                cfg_dir = _hermes_config_dir()
+                logs_dir = os.path.join(cfg_dir, "logs")
+                result = {"success": True, "logs": {}}
+                for log_name in ("agent.log", "errors.log", "gateway.log"):
                     lines_list = []
-                    
-                    if os.path.exists(log_path) and os.path.isfile(log_path):
+                    log_path = os.path.join(logs_dir, log_name)
+                    if os.path.isfile(log_path):
                         try:
-                            with open(log_path, "r", encoding="utf-8", errors="replace") as lf:
-                                all_lines = lf.readlines()
-                                # Tail 100 lines
-                                lines_list = all_lines[-100:] if len(all_lines) > 100 else all_lines
-                        except Exception as e:
-                            lines_list = [f"Error reading {log_name}: {str(e)}"]
-                    else:
-                        lines_list = [f"{log_name} not found"]
-                    
+                            with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+                                all_lines = f.readlines()
+                            lines_list = [ln.rstrip("\r\n") for ln in all_lines[-100:]]
+                        except Exception:
+                            lines_list = []
                     result["logs"][log_name] = lines_list
-                
+
+                # Build human-friendly summary
+                result["summary"] = _analyze_logs(result["logs"])
+
                 return self._send_json(200, result)
             except Exception as e:
                 return self._send_json(500, {"success": False, "error": str(e)})
-
 
         if path == "/api/hermes/config":
             try:
