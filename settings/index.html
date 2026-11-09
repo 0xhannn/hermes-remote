@@ -603,12 +603,22 @@
       if (document.getElementById('exportModal').style.display === 'flex') {
         closeExportModal();
       }
-      if (document.getElementById('profileModal').style.display === 'flex') {
-        document.getElementById('profileModal').style.display = 'none';
+      const st = history.state || {};
+      // Lapisan atas: delete modal. Tertutup hanya kalau state tak lagi menyatakan terbuka,
+      // sehingga back pertama menutup delete saja, menyisakan modal profil di belakangnya.
+      if (!st.deleteProfileModalOpen) {
+        const dm = document.getElementById('deleteProfileModal');
+        if (dm.style.display === 'flex') {
+          dm.style.display = 'none';
+          _deleteTarget = null;
+        }
       }
-      if (document.getElementById('deleteProfileModal').style.display === 'flex') {
-        document.getElementById('deleteProfileModal').style.display = 'none';
-        _deleteTarget = null;
+      // Lapisan bawah: profile modal. Tertutup hanya kalau state tak lagi menyatakan terbuka.
+      if (!st.profileModalOpen) {
+        const pm = document.getElementById('profileModal');
+        if (pm.style.display === 'flex') {
+          pm.style.display = 'none';
+        }
       }
     });
 
