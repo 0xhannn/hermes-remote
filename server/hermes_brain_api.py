@@ -440,6 +440,7 @@ def _analyze_logs(logs):
         if _bad_prov:
             _repo = "; ".join(p["name"] + ": " + ", ".join(p["issues"]) for p in _bad_prov)
             summary.append({"level":"error","title":"Provider bermasalah di konfigurasi","message":"Ada custom provider yang konfigurasinya tidak lengkap. Hermes bisa gagal memakainya.","hint":"Buka Brain, perbaiki provider berikut: " + _repo + ".","source":"config.yaml","count":len(_bad_prov),"provider_names":[p["name"] for p in _bad_prov]})
+            problems["_provider_cfg_bad"] = True
     except Exception:
         pass
 
@@ -467,7 +468,7 @@ def _analyze_logs(logs):
         if "API call failed" in joined:
             problems["api_fail"] = problems.get("api_fail", 0) + joined.count("API call failed")
 
-    if problems.get("api_key_mismatch"):
+    if problems.get("api_key_mismatch") and not problems.get("_provider_cfg_bad"):
         _sids = sorted(set(problems.get("api_key_mismatch_sessions", [])))
         _prov_names = []
         try:
