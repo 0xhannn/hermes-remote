@@ -416,6 +416,33 @@ def _analyze_logs(logs):
     problems = {}
     raw = {}
 
+    # --- Validasi statis konfigurasi custom provider ---
+    try:
+        _cfg0 = load_yaml()
+        _bad_prov = []
+        for _p in _cfg0.get("custom_providers", []):
+            _pname = str(_p.get("name") or "").strip()
+            if not _pname:
+                continue
+            _issue = []
+            _burl = str(_p.get("base_url") or "").strip()
+            if not _burl:
+                _issue.append("base_url kosong")
+            elif not (_burl.startswith("http://") or _burl.startswith("https://")):
+                _issue.append("base_url bukan URL valid")
+            _ak = str(_p.get("api_key") or "").strip()
+            if not _ak or _ak in ("0", "''", '""'):
+                _issue.append("api_key kosong/placeholder")
+            if not str(_p.get("model") or "").strip():
+                _issue.append("model tidak diatur")
+            if _issue:
+                _bad_prov.append({"name": _pname, "issues": _issue})
+        if _bad_prov:
+            _repo = "; ".join(p["name"] + ": " + ", ".join(p["issues"]) for p in _bad_prov)
+            summary.append({"level":"error","title":"Provider bermasalah di konfigurasi","message":"Ada custom provider yang konfigurasinya tidak lengkap. Hermes bisa gagal memakainya.","hint":"Buka Brain, perbaiki provider berikut: " + _repo + ".","source":"config.yaml","count":len(_bad_prov),"provider_names":[p["name"] for p in _bad_prov]})
+    except Exception:
+        pass
+
     for name in ("agent.log", "errors.log", "gateway.log"):
         lines = _recent_log_lines(logs.get(name, []))
         raw[name] = lines
