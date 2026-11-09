@@ -22,7 +22,7 @@ except ImportError:
 import shutil
 import tarfile
 import tempfile
-from datetime import datetime
+from datetime import datetime, timedelta
 import io
 import socketserver
 import http.server
@@ -391,21 +391,19 @@ def skill_delete_crossplatform(name):
     shutil.rmtree(existing, ignore_errors=True)
     return {"success": True, "message": f"Skill '{name}' berhasil dihapus"}
 
-import datetime
-
 _LOG_TS_RE = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}),\d+\s+")
 
 def _recent_log_lines(lines, window_hours=24):
     """Keep only log lines whose timestamp is within window_hours of now."""
-    now = datetime.datetime.now()
-    cutoff = now - datetime.timedelta(hours=window_hours)
+    now = datetime.now()
+    cutoff = now - timedelta(hours=window_hours)
     out = []
     for line in lines:
         m = _LOG_TS_RE.match(line)
         if not m:
             continue
         try:
-            ts = datetime.datetime.strptime(m.group(1), "%Y-%m-%d %H:%M:%S")
+            ts = datetime.strptime(m.group(1), "%Y-%m-%d %H:%M:%S")
         except ValueError:
             continue
         if ts >= cutoff:
@@ -425,6 +423,8 @@ def _analyze_logs(logs):
 
         if "session_policy_credentials" in joined:
             problems["api_key_mismatch"] = problems.get("api_key_mismatch", 0) + joined.count("session_policy_credentials")
+            for sid in re.findall(r"Session\s+(local-[a-f0-9]{64})", joined):
+                problems.setdefault("api_key_mismatch_sessions", []).append(sid)
         if "Incorrect API key" in joined or "Invalid API key" in joined:
             problems["api_key_rejected"] = problems.get("api_key_rejected", 0) + 1
         if "Could not determine context length" in joined or "context length" in joined.lower():
@@ -439,7 +439,8 @@ def _analyze_logs(logs):
             problems["api_fail"] = problems.get("api_fail", 0) + joined.count("API call failed")
 
     if problems.get("api_key_mismatch"):
-        summary.append({"level":"warning","title":"Sesi memakai API key lama","message":"Ada sesi lama yang masih memakai API key yang tidak cocok dengan konfigurasi provider saat ini. Ini sering membuat Hermes gagal merespons atau bertingkah aneh.","hint":"Cek dan perbarui API key provider di halaman Brain, lalu mulai sesi baru.","source":"errors.log","count":problems["api_key_mismatch"]})
+        _sids = sorted(set(problems.get("api_key_mismatch_sessions", [])))
+        summary.append({"level":"warning","title":"Sesi memakai API key lama","message":"Ada sesi lama yang masih memakai API key yang tidak cocok dengan konfigurasi provider saat ini. Ini sering membuat Hermes gagal merespons atau bertingkah aneh.","hint":"Cek dan perbarui API key provider di halaman Brain, atau hapus sesi lama yang tercemar.","source":"errors.log","count":problems["api_key_mismatch"],"session_ids":_sids})
     if problems.get("api_key_rejected"):
         summary.append({"level":"error","title":"API key ditolak (401)","message":"Provider menolak API key yang dipakai. Hermes tidak bisa berkomunikasi dengan model.","hint":"Buka Brain, perbarui API key provider, lalu uji ulang.","source":"errors.log","count":problems["api_key_rejected"]})
     if problems.get("api_fail"):
@@ -458,7 +459,27 @@ def _analyze_logs(logs):
 
     return summary
 
+
+def _delete_sessions(session_ids):
+    """Delete stale sessions via official CLI. Returns (deleted, errors)."""
+    deleted = []
+    errors = []
+    for sid in session_ids:
+        try:
+            r = subprocess.run(
+                ["hermes", "sessions", "delete", sid, "--yes"],
+                capture_output=True, text=True, timeout=30)
+            if r.returncode == 0:
+                deleted.append(sid)
+            else:
+                errors.append({"session_id": sid, "detail": (r.stderr or r.stdout).strip()})
+        except Exception as e:
+            errors.append({"session_id": sid, "detail": str(e)})
+    return deleted, errors
+
+
 class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
+
     def _send_cors(self):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
@@ -912,6 +933,18 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
 
         if not self._check_auth():
             return self._send_json(401, {"success": False, "error": "Unauthorized: PIN diperlukan"})
+
+        if path == "/api/hermes/logs/fix-session-credentials":
+            session_ids = body.get("session_ids", [])
+            if not isinstance(session_ids, list) or not session_ids:
+                return self._send_json(400, {"success": False, "error": "session_ids wajib array tidak kosong"})
+            deleted, errors = _delete_sessions(session_ids)
+            return self._send_json(200, {
+                "success": True,
+                "message": f"{len(deleted)} sesi dihapus",
+                "deleted": deleted,
+                "errors": errors
+            })
 
         if path == "/api/hermes/auth/change-pin":
             old_pin = body.get("old_pin", "").strip()

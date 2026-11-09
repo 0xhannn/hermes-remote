@@ -132,6 +132,17 @@
     .dx-message { font-size: 13px; color: var(--text-main); margin-top: 8px; line-height: 1.5; }
     .dx-hint { font-size: 13px; margin-top: 8px; padding: 10px 12px; background: var(--bg-subtle); border-radius: 8px; color: var(--text-muted); display: flex; gap: 8px; align-items: flex-start; }
     .dx-hint svg { flex-shrink: 0; margin-top: 1px; }
+    .dx-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    .dx-fix-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--blue-soft); color: var(--blue-dev); border: 1px solid var(--blue-border); border-radius: 8px; padding: 8px 14px; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .dx-fix-btn:hover { border-color: var(--blue-dev); }
+    .confirm-backdrop { position: fixed; inset: 0; background: rgba(28, 25, 23, 0.35); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .confirm-box { background: var(--bg-card); border: 1px solid var(--card-border); border-radius: 12px; padding: 20px; max-width: 380px; width: 90%; box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
+    .confirm-title { font-size: 15px; font-weight: 800; margin-bottom: 8px; }
+    .confirm-text { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px; }
+    .confirm-actions { display: flex; justify-content: flex-end; gap: 10px; }
+    .confirm-actions button { font-family: inherit; font-size: 13px; border-radius: 8px; padding: 8px 16px; cursor: pointer; }
+    .btn-cancel { background: transparent; border: 1px solid var(--card-border); color: var(--text-main); }
+    .btn-danger { background: var(--danger-red); border: 1px solid var(--danger-red); color: #fff; font-weight: 700; }
 
     /* Raw log view */
     .log-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -293,16 +304,21 @@
       }
 
       const list = document.getElementById('diagnosisList');
+      window._dxSessions = {};
       list.innerHTML = summary.map(item => {
         const badge = item.level === 'ok' ? 'ok' : item.level;
         const hintHtml = item.hint
           ? '<div class="dx-hint"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span>' + escapeHtml(item.hint) + '</span></div>'
           : '';
         const countHtml = item.count > 1 ? '<span class="dx-count">terjadi ' + item.count + 'x</span>' : '';
+        if (item.session_ids && item.session_ids.length > 0) window._dxSessions[item.title] = item.session_ids;
         return '<div class="dx-item">' +
           '<div class="dx-head"><span class="dx-badge ' + badge + '">' + badge + '</span>' +
           '<span class="dx-title">' + escapeHtml(item.title) + '</span>' + countHtml + '</div>' +
           '<div class="dx-message">' + escapeHtml(item.message) + '</div>' + hintHtml +
+          (item.session_ids && item.session_ids.length > 0
+            ? '<div class="dx-actions"><button type="button" class="dx-fix-btn" data-action="fix-sessions"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>Hapus ' + item.session_ids.length + ' sesi lama</button></div>'
+            : '') +
           '</div>';
       }).join('');
     }
@@ -366,7 +382,56 @@
     document.getElementById('refreshLogsBtn').addEventListener('click', loadLogs);
 
     loadLogs();
+    // --- Aksi perbaikan ---
+    let _pendingFixSessions = null;
+    const backdrop = document.getElementById('confirmBackdrop');
+    const doClose = () => { backdrop.style.display = 'none'; _pendingFixSessions = null; };
+
+    document.getElementById('confirmCancel').addEventListener('click', doClose);
+    document.getElementById('confirmOk').addEventListener('click', async () => {
+      const sids = _pendingFixSessions;
+      doClose();
+      if (!sids || sids.length === 0) return;
+      try {
+        const res = await fetch('/api/hermes/logs/fix-session-credentials', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ session_ids: sids })
+        });
+        const data = await res.json();
+        const s = document.getElementById('healthSub');
+        if (data.success) {
+          if (s) s.textContent = data.message + '. Memuat ulang...';
+        } else {
+          if (s) s.textContent = 'Gagal: ' + (data.error || 'kesalahan tidak dikenal');
+        }
+        loadLogs();
+      } catch (e) {
+        const s = document.getElementById('healthSub');
+        if (s) s.textContent = 'Gagal terhubung ke server.';
+      }
+    });
+
+    document.getElementById('diagnosisList').addEventListener('click', (e) => {
+      const btn = e.target.closest('.dx-fix-btn');
+      if (!btn) return;
+      const title = btn.closest('.dx-item').querySelector('.dx-title').textContent;
+      const sids = (window._dxSessions || {})[title];
+      if (!sids || sids.length === 0) return;
+      _pendingFixSessions = sids;
+      backdrop.style.display = 'flex';
+    });
   </script>
+  <div class="confirm-backdrop" id="confirmBackdrop" style="display:none">
+    <div class="confirm-box">
+      <div class="confirm-title">Hapus sesi lama?</div>
+      <div class="confirm-text" id="confirmText">Sesi yang memakai API key lama akan dihapus. Hermes akan membuat sesi baru otomatis saat Anda memulai percakapan berikutnya. Tindakan ini tidak bisa dibatalkan.</div>
+      <div class="confirm-actions">
+        <button type="button" class="btn-cancel" id="confirmCancel">Batal</button>
+        <button type="button" class="btn-danger" id="confirmOk">Hapus</button>
+      </div>
+    </div>
+  </div>
   <script src="/assets/auth-guard.js"></script>
   <script src="/assets/ui-enhancements.js?v=2"></script>
 </main>
