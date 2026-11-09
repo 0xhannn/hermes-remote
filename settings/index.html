@@ -1099,10 +1099,13 @@
       const res = await fetch('/api/hermes/profile/delete', { method:'POST', headers:{ 'Content-Type':'application/json', 'X-Hermes-PIN': pin }, body: JSON.stringify({ path: _deleteTarget.path }) });
       const data = await res.json();
       if (!data.success) throw new Error(data.error || 'gagal menghapus');
+      // Bersihkan marker modal dari entri history saat ini sebelum reload, supaya
+      // tombol Back berikutnya tidak lompat keluar halaman dan tidak ada sisa state.
+      history.replaceState({}, '');
       document.getElementById('deleteProfileModal').style.display = 'none';
       _deleteTarget = null;
       document.getElementById('profileStatus').textContent = 'Profil dihapus. Memuat ulang...';
-      setTimeout(() => location.reload(), 500);
+      setTimeout(() => location.reload(), 300);
     } catch (e) {
       btn.disabled = false;
       btn.textContent = 'Hapus Permanen';
