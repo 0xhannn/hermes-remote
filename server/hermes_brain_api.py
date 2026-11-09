@@ -11,6 +11,7 @@ Endpoints:
   POST /api/hermes/provider/delete
 """
 
+import re
 import os
 import sys
 import json
@@ -390,6 +391,27 @@ def skill_delete_crossplatform(name):
     shutil.rmtree(existing, ignore_errors=True)
     return {"success": True, "message": f"Skill '{name}' berhasil dihapus"}
 
+import datetime
+
+_LOG_TS_RE = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}),\d+\s+")
+
+def _recent_log_lines(lines, window_hours=24):
+    """Keep only log lines whose timestamp is within window_hours of now."""
+    now = datetime.datetime.now()
+    cutoff = now - datetime.timedelta(hours=window_hours)
+    out = []
+    for line in lines:
+        m = _LOG_TS_RE.match(line)
+        if not m:
+            continue
+        try:
+            ts = datetime.datetime.strptime(m.group(1), "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            continue
+        if ts >= cutoff:
+            out.append(line)
+    return out
+
 def _analyze_logs(logs):
     """Detect common agent problems from raw log lines -> list of {level, message, hint, source}."""
     summary = []
@@ -397,7 +419,7 @@ def _analyze_logs(logs):
     raw = {}
 
     for name in ("agent.log", "errors.log", "gateway.log"):
-        lines = logs.get(name, [])
+        lines = _recent_log_lines(logs.get(name, []))
         raw[name] = lines
         joined = "\n".join(lines)
 
