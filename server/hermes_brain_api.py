@@ -937,7 +937,7 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
             pin = body.get("pin", "")
             current_pin = get_current_pin()
             if pin == current_pin:
-                cookie = f"hermes_pin={current_pin}; Path=/; HttpOnly; SameSite=Lax"
+                cookie = f"hermes_pin={current_pin}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000"
                 return self._send_json(200, {"success": True, "message": "Auth OK"}, set_cookie=cookie)
             return self._send_json(401, {"success": False, "error": "PIN tidak valid"})
 
