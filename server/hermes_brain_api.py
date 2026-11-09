@@ -164,25 +164,65 @@ def _set_active_home(path):
     _ACTIVE_HOME = None
     return False
 
-def list_hermes_profiles():
-    base = _hermes_config_dir()
-    profiles = []
+def _find_all_hermes_homes():
+    homes = []
     seen = set()
-    active = _get_active_home() or os.path.abspath(base)
-    def add(p, name):
-        p = os.path.abspath(p)
-        if p in seen or not _looks_like_hermes(p):
+    def add(p):
+        if not p:
             return
-        seen.add(p)
-        profiles.append({"name": name, "path": p, "active": bool(active) and (p == active)})
-    add(base, "(Default)")
-    prof_root = os.path.join(base, "profiles")
-    if os.path.isdir(prof_root):
-        for entry in sorted(os.listdir(prof_root)):
-            cand = os.path.join(prof_root, entry)
-            if os.path.isdir(cand):
-                add(cand, entry)
-    return {"success": True, "active": active, "profiles": profiles}
+        p = os.path.abspath(p)
+        key = p.lower() if sys.platform == "win32" else p
+        if key in seen or not _looks_like_hermes(p):
+            return
+        seen.add(key)
+        homes.append(p)
+    active = _get_active_home()
+    if active:
+        add(active)
+    else:
+        add(_hermes_config_dir())
+    if sys.platform == "win32":
+        base_users = os.path.dirname(os.environ.get("USERPROFILE", "")) or r"C:\Users"
+        if os.path.isdir(base_users):
+            for u in sorted(os.listdir(base_users)):
+                udir = os.path.join(base_users, u)
+                if not os.path.isdir(udir):
+                    continue
+                for sub in ("AppData\\Local\\hermes", "AppData\\Roaming\\hermes", ".hermes"):
+                    add(os.path.join(udir, sub))
+    else:
+        add(os.path.expanduser("~/.hermes"))
+        add("/etc/hermes")
+    for h in list(homes):
+        prof_root = os.path.join(h, "profiles")
+        if os.path.isdir(prof_root):
+            for entry in sorted(os.listdir(prof_root)):
+                cand = os.path.join(prof_root, entry)
+                if os.path.isdir(cand):
+                    add(cand)
+    return homes
+
+def list_hermes_profiles():
+    active = _get_active_home() or os.path.abspath(_hermes_config_dir())
+    active_norm = os.path.abspath(active)
+    profiles = []
+    for h in _find_all_hermes_homes():
+        h_norm = os.path.abspath(h)
+        key = h_norm.lower() if sys.platform == "win32" else h_norm
+        akey = active_norm.lower() if sys.platform == "win32" else active_norm
+        is_active = key == akey
+        name = "(Default)" if is_active else os.path.basename(h)
+        if not is_active:
+            left = os.path.normcase(h_norm)
+            if "\\profiles\\" in left:
+                name = os.path.basename(h)
+            elif "\\users\\" in left:
+                rest = left[ left.find("\\users\\")+7 : ]
+                name = rest.split("\\")[0] or name
+        profiles.append({"name": name, "path": h_norm, "active": is_active})
+    if not any(pp["active"] for pp in profiles):
+        profiles.insert(0, {"name": "(Default)", "path": active_norm, "active": True})
+    return {"success": True, "active": active_norm, "profiles": profiles}
 
 def _hermes_config_dir():
     active = _get_active_home()
