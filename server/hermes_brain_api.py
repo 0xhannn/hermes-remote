@@ -482,6 +482,41 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
         if path == "/api/hermes/system/health":
             return self._send_json(200, get_system_health())
 
+        if path == "/api/hermes/logs":
+            try:
+                hermes_dir = _hermes_config_dir()
+                logs_dir = os.path.join(hermes_dir, "logs")
+                
+                result = {
+                    "success": True,
+                    "logs": {}
+                }
+                
+                # Read 3 log files: agent.log, errors.log, gateway.log
+                log_files = ["agent.log", "errors.log", "gateway.log"]
+                
+                for log_name in log_files:
+                    log_path = os.path.join(logs_dir, log_name)
+                    lines_list = []
+                    
+                    if os.path.exists(log_path) and os.path.isfile(log_path):
+                        try:
+                            with open(log_path, "r", encoding="utf-8", errors="replace") as lf:
+                                all_lines = lf.readlines()
+                                # Tail 100 lines
+                                lines_list = all_lines[-100:] if len(all_lines) > 100 else all_lines
+                        except Exception as e:
+                            lines_list = [f"Error reading {log_name}: {str(e)}"]
+                    else:
+                        lines_list = [f"{log_name} not found"]
+                    
+                    result["logs"][log_name] = lines_list
+                
+                return self._send_json(200, result)
+            except Exception as e:
+                return self._send_json(500, {"success": False, "error": str(e)})
+
+
         if path == "/api/hermes/config":
             try:
                 cfg = load_yaml()

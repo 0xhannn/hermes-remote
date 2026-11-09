@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log · Hermes Remote</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/hermes-icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-page: #FAF8F5;
+      --bg-card: #FFFFFF;
+      --bg-subtle: #FAF7F0;
+      --card-border: #E8E2D9;
+      --text-main: #1C1917;
+      --text-muted: #78716C;
+      --blue-dev: #2563EB;
+      --blue-hover: #1D4ED8;
+      --blue-border: #93C5FD;
+      --blue-soft: #EFF6FF;
+      --status-green: #22C55E;
+      --status-green-bg: #DCFCE7;
+      --status-green-text: #166534;
+      --danger-red: #DC2626;
+      --danger-bg: #FEE2E2;
+      --danger-border: #FCA5A5;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      outline: none;
+    }
+    html, body, * {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    *::-webkit-scrollbar {
+      display: none;
+    }
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+    }
+    .container {
+      width: 100%;
+      max-width: 100%;
+    }
+    header {
+      display: block;
+      margin-bottom: 32px;
+    }
+    .brand-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .status-pill {
+      background: var(--bg-card);
+      border: 1px solid var(--card-border);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background-color: #10B981;
+      border-radius: 50%;
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: var(--text-main);
+      margin-top: 6px;
+    }
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .card-title {
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: -8px;
+    }
+    .btn {
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+      background: #FFFFFF;
+      color: var(--text-main);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+    .btn:hover {
+      background: var(--bg-subtle);
+      border-color: var(--blue-border);
+    }
+    .btn-primary {
+      background: var(--blue-dev);
+      color: #FFFFFF;
+      border-color: var(--blue-dev);
+    }
+    .btn-primary:hover {
+      background: var(--blue-hover);
+    }
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .log-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 12px;
+    }
+    .log-tab {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--card-border);
+      background: var(--bg-card);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .log-tab:hover {
+      border-color: var(--blue-border);
+      color: var(--text-main);
+    }
+    .log-tab.is-active {
+      background: var(--blue-soft);
+      border-color: var(--blue-border);
+      color: var(--blue-dev);
+      font-weight: 700;
+    }
+    .log-panel {
+      background: var(--bg-subtle);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 16px;
+      max-height: 480px;
+      overflow-y: auto;
+    }
+    .log-line {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--text-main);
+      white-space: pre-wrap;
+      word-break: break-word;
+      padding: 2px 0;
+      border-bottom: 1px solid rgba(232, 226, 217, 0.5);
+    }
+    .log-line:last-child {
+      border-bottom: none;
+    }
+    .log-line .log-time {
+      color: var(--text-muted);
+    }
+    .log-line .log-level-info {
+      color: var(--blue-dev);
+      font-weight: 600;
+    }
+    .log-line .log-level-warning {
+      color: #B45309;
+      font-weight: 600;
+    }
+    .log-line .log-level-error {
+      color: var(--danger-red);
+      font-weight: 600;
+    }
+    .log-empty {
+      font-size: 13px;
+      color: var(--text-muted);
+      padding: 8px 0;
+    }
+    footer {
+      margin-top: 40px;
+      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+      text-align: center;
+    }
+    @media (max-width: 767px) {
+      body { padding: 0; }
+      .card { padding: 14px 16px; border-radius: 12px; }
+      .btn { min-height: 44px; }
+      .log-panel { max-height: 400px; }
+    }
+  </style>
+  <link rel="stylesheet" href="/assets/ui-enhancements.css?v=8">
+</head>
+<body>
+<div class="app-shell">
+<!-- hermes-sidebar --><aside class="sidebar" id="hermes-sidebar">
+  <div class="sidebar-brand">
+    <img src="/assets/hermes-icon.svg" alt="" width="28" height="28">
+    <span class="brand-copy">
+      <strong>Hermes Remote</strong>
+      <small>By PH Labs</small>
+    </span>
+  </div>
+  <nav class="sidebar-nav" aria-label="Utama">
+    <a class="nav-link" href="/"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>Dashboard</span></a>
+    <a class="nav-link" href="/brain/"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4a3 3 0 0 0-3 3v1a3 3 0 0 0-2 2.8V14a3 3 0 0 0 2.2 2.9A3 3 0 0 0 9 20h1V4H9z"/><path d="M15 4a3 3 0 0 1 3 3v1a3 3 0 0 1 2 2.8V14a3 3 0 0 1-2.2 2.9A3 3 0 0 1 15 20h-1V4h1z"/><path d="M12 4v16"/></svg><span>Brain</span></a>
+    <a class="nav-link" href="/context/"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h9l3 3v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M15 4v4h4"/><path d="M8 12h8M8 16h5"/></svg><span>Context</span></a>
+    <a class="nav-link" href="/skills/"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 3.5 16 6l2.5.4-1.8 1.8.4 2.5L14.5 9.6 12 10.7l-.4-2.5L9.8 6.4 12.3 6z"/><path d="M4 14h6v6H4z"/><path d="M14 15h6M14 19h4M12 4v2"/></svg><span>Skills</span></a>
+    <a class="nav-link is-active" href="/logs/" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M7 15h4M7 17h2"/></svg><span>Log</span></a>
+    <a class="nav-link" href="/settings/"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6"/></svg><span>Settings</span></a>
+  </nav>
+  <div class="sidebar-foot">
+    <span class="status-pill"><i></i>Live</span>
+  </div>
+</aside>
+
+  <main class="main-content">
+  <div class="container">
+    <header>
+      <div class="brand-row">
+        <div class="page-mark"></div>
+        <div class="status-pill"><span class="status-dot"></span> AKTIVITAS AGEN</div>
+      </div>
+      <h1>Log</h1>
+      <p class="subtitle">Log aktivitas Hermes agent: riwayat agent, error, dan gateway.</p>
+    </header>
+
+    <div class="card">
+      <div class="card-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Log Aktivitas
+      </div>
+      <div class="card-desc">100 baris terakhir tiap file log. Mudah menelusuri aktivitas agent tanpa terminal.</div>
+
+      <div class="log-tabs" role="tablist">
+        <button class="log-tab is-active" data-log="agent.log" role="tab">agent.log</button>
+        <button class="log-tab" data-log="errors.log" role="tab">errors.log</button>
+        <button class="log-tab" data-log="gateway.log" role="tab">gateway.log</button>
+      </div>
+
+      <div class="log-panel" id="logViewer">
+        <div class="log-empty" id="logEmpty">Memuat log...</div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="refreshLogsBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+          Muat Ulang
+        </button>
+      </div>
+    </div>
+
+    <footer>
+      localhost:8093 · Hermes Control Center · Agent Gateway
+    </footer>
+  </div>
+
+  <script>
+    let currentLog = 'agent.log';
+    let logData = {};
+
+    const logViewer = document.getElementById('logViewer');
+    const logEmpty = document.getElementById('logEmpty');
+
+    function escapeHtml(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function formatLogLine(line) {
+      // Parse: TIMESTAMP LEVEL logger: message
+      const m = line.match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d+)\s+(INFO|WARNING|ERROR|DEBUG|CRITICAL)\s+(.*)$/);
+      if (!m) {
+        return '<div class="log-line">' + escapeHtml(line) + '</div>';
+      }
+      const levelClass = 'log-level-' + m[2].toLowerCase();
+      return '<div class="log-line"><span class="log-time">' + escapeHtml(m[1]) + '</span> <span class="' + levelClass + '">' + m[2] + '</span> ' + escapeHtml(m[3]) + '</div>';
+    }
+
+    async function loadLogs() {
+      logEmpty.textContent = 'Memuat log...';
+      logViewer.innerHTML = '<div class="log-empty">Memuat log...</div>';
+      try {
+        const res = await fetch('/api/hermes/logs', {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' }
+        });
+        const data = await res.json();
+        if (!data.success) {
+          logViewer.innerHTML = '<div class="log-empty">Gagal memuat log.</div>';
+          return;
+        }
+        logData = data.logs || {};
+        renderCurrentLog();
+      } catch (e) {
+        logViewer.innerHTML = '<div class="log-empty">Gagal terhubung ke server.</div>';
+      }
+    }
+
+    function renderCurrentLog() {
+      const lines = logData[currentLog];
+      if (!lines || lines.length === 0) {
+        logViewer.innerHTML = '<div class="log-empty">Tidak ada isi log.</div>';
+        return;
+      }
+      logViewer.innerHTML = lines.map(formatLogLine).join('');
+    }
+
+    // Tab switching
+    document.querySelectorAll('.log-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.log-tab').forEach(t => t.classList.remove('is-active'));
+        tab.classList.add('is-active');
+        currentLog = tab.dataset.log;
+        renderCurrentLog();
+      });
+    });
+
+    document.getElementById('refreshLogsBtn').addEventListener('click', loadLogs);
+
+    // Initial load
+    loadLogs();
+  </script>
+  <script src="/assets/auth-guard.js"></script>
+  <script src="/assets/ui-enhancements.js?v=2"></script>
+</main>
+</div>
+</body>
+</html>
