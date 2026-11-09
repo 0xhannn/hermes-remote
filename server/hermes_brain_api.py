@@ -30,6 +30,7 @@ import urllib.parse
 import urllib.request
 import subprocess
 import time
+import stat
 
 HEALTH_SERVICES = ("hermes-brain-api.service", "hermes-gateway.service")
 
@@ -163,6 +164,46 @@ def _set_active_home(path):
         return True
     _ACTIVE_HOME = None
     return False
+
+def _rmtree_retry(func, path, exc_info):
+    # Retry satu kali dengan atribut read-only dilepas (Windows).
+    try:
+        os.chmod(path, stat.S_IWRITE)
+        func(path)
+    except Exception:
+        raise
+
+def _delete_profile_folder(root):
+    """Hapus folder profil.
+
+    Urutan aman: rename dulu ke <parent>/__deleted__<nama>_<ts> supaya profil
+    cepat hilang dari daftar (folder tak lagi terdaftar), lalu isi dibersihkan
+    paksa (atribut read-only dilepas). Jika ada file terkunci proses lain dan
+    pembersihan parsial gagal, folder yatim tersisa di samping — dari sisi
+    aplikasi profil sudah terhapus, sisa bisa dibersihkan manual.
+    """
+    ts = time.strftime("%Y%m%d%H%M%S")
+    orphan = os.path.join(os.path.dirname(root), "__deleted__" + os.path.basename(root) + "_" + ts)
+    os.rename(root, orphan)
+    if sys.platform == "win32":
+        for dirpath, dirnames, filenames in os.walk(orphan):
+            for name in filenames:
+                p = os.path.join(dirpath, name)
+                try:
+                    os.chmod(p, stat.S_IWRITE)
+                except Exception:
+                    pass
+            for name in dirnames:
+                p = os.path.join(dirpath, name)
+                try:
+                    os.chmod(p, stat.S_IWRITE)
+                except Exception:
+                    pass
+        try:
+            os.chmod(orphan, stat.S_IWRITE)
+        except Exception:
+            pass
+    shutil.rmtree(orphan, onerror=_rmtree_retry)
 
 def _find_all_hermes_homes():
     homes = []
@@ -1057,22 +1098,10 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
                 return self._send_json(400, {"success": False, "error": "Profil tidak dikenali"})
             if found["active"] or found["name"] == "(Default)":
                 return self._send_json(400, {"success": False, "error": "Tidak bisa menghapus profil aktif/default. Pindah ke profil lain dulu."})
-            # HANYA izinkan hapus profil di dalam folder profiles/ milik salah satu home.
-            # Home level-1 (base utama, misal home user lain) diblokir: terlalu destruktif
-            # dan sering memuat state tersembunyi (.git, dsb) yang bisa gagal di tengah hapus.
-            t_norm = os.path.normcase(target)
-            allowed = False
-            for h in _find_all_hermes_homes():
-                pr = os.path.normcase(os.path.join(h, "profiles")) + os.sep
-                if t_norm.startswith(pr):
-                    allowed = True
-                    break
-            if not allowed:
-                return self._send_json(400, {"success": False, "error": "Hanya profil di dalam folder profiles/ yang bisa dihapus"})
             if not os.path.isdir(target):
                 return self._send_json(400, {"success": False, "error": "Folder profil tidak ditemukan"})
             try:
-                shutil.rmtree(target)
+                _delete_profile_folder(target)
                 return self._send_json(200, {"success": True, "message": "Profil dihapus"})
             except Exception as e:
                 return self._send_json(500, {"success": False, "error": str(e)})

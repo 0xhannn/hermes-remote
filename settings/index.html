@@ -997,7 +997,7 @@
       
       card.appendChild(icon);
       card.appendChild(txt);
-      if (!p.active && p.name !== '(Default)' && /\\profiles\\/.test(p.path)) {
+      if (!p.active && p.name !== '(Default)') {
         const delBtn = document.createElement('button');
         delBtn.type = 'button';
         delBtn.textContent = 'Hapus';
@@ -1038,7 +1038,11 @@
   });
 
   document.getElementById('closeProfileModalBtn').addEventListener('click', () => {
-    document.getElementById('profileModal').style.display = 'none';
+    if (history.state && history.state.profileModalOpen) {
+      history.back();
+    } else {
+      document.getElementById('profileModal').style.display = 'none';
+    }
   });
 
   let _deleteTarget = null;
@@ -1068,8 +1072,12 @@
   });
 
   document.getElementById('cancelDeleteProfileBtn').addEventListener('click', () => {
-    document.getElementById('deleteProfileModal').style.display = 'none';
-    _deleteTarget = null;
+    if (history.state && history.state.deleteProfileModalOpen) {
+      history.back();
+    } else {
+      document.getElementById('deleteProfileModal').style.display = 'none';
+      _deleteTarget = null;
+    }
   });
 
   document.getElementById('confirmDeleteProfileBtn').addEventListener('click', async () => {
