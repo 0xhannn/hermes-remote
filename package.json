@@ -14,7 +14,8 @@
     "skills/",
     "settings/",
     "index.html",
-    "README.md"
+    "README.md",
+    "notion/"
   ],
   "bin": {
     "hermes-remote": "bin/cli.js"

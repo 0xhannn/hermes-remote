@@ -361,6 +361,213 @@ def save_yaml(data):
     with open(os.path.join(_hermes_config_dir(), "config.yaml"), "w", encoding="utf-8") as f:
         f.write(json.dumps(data, ensure_ascii=False, indent=2))
 
+def _notion_cfg_path():
+    return os.path.join(_hermes_config_dir(), "notion.json")
+
+def _notion_load():
+    p = _notion_cfg_path()
+    if os.path.isfile(p):
+        try:
+            with open(p, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+def _notion_save(cfg):
+    p = _notion_cfg_path()
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    tmp = p + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, p)
+
+def _notion_api(token, method, url, body=None):
+    req = urllib.request.Request("https://api.notion.com/v1/" + url, method=method,
+        data=json.dumps(body).encode("utf-8") if body is not None else None,
+        headers={"Authorization": "Bearer " + token, "Notion-Version": "2022-06-28", "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=25) as r:
+            return r.status, json.load(r)
+    except urllib.error.HTTPError as e:
+        try:
+            err = json.loads(e.read().decode() or "{}")
+        except Exception:
+            err = {"message": str(e)}
+        return e.code, err
+    except Exception as e:
+        return 0, {"message": str(e)}
+
+def _notion_title(d):
+    try:
+        t = d.get("title", [])
+        return "".join(x.get("plain_text", "") for x in t)
+    except Exception:
+        return "(untitled)"
+
+def _page_title(props):
+    name = props.get("Name") or props.get("title")
+    if isinstance(name, dict):
+        arr = name.get("title", []) if isinstance(name, dict) else []
+        s = "".join(x.get("plain_text", "") for x in arr)
+        if s:
+            return s
+    return "(untitled)"
+
+def _notion_fetch_children(token, block_id):
+    st, res = _notion_api(token, "GET", "blocks/" + block_id + "/children?page_size=100")
+    return res.get("results", []) if st == 200 else []
+
+def _notion_blocks_to_md(token, blocks, depth=0):
+    if depth > 4 or not blocks:
+        return ""
+    lines = []
+    n = 0
+    indent = "  " * depth
+    for b in blocks:
+        t = b.get("type")
+        bl = b.get(t, {}) or {}
+        rich = "".join(x.get("plain_text", "") for x in bl.get("rich_text", []))
+        head = ""
+        if t == "heading_1":
+            head = "# "
+        elif t == "heading_2":
+            head = "## "
+        elif t == "heading_3":
+            head = "### "
+        elif t == "bulleted_list_item":
+            head = "- "
+        elif t == "numbered_list_item":
+            n += 1
+            head = "%d. " % n
+        elif t == "to_do":
+            head = "- [x] " if bl.get("checked") else "- [ ] "
+        elif t in ("quote", "callout"):
+            head = "> "
+        elif t == "code":
+            lang = bl.get("language", "")
+            lines.append(indent + "```" + lang)
+            lines.append(indent + rich)
+            lines.append(indent + "```")
+            continue
+        elif t == "divider":
+            lines.append(indent + "---")
+            continue
+        elif t == "child_page":
+            title = bl.get("title") or "(subpage)"
+            cid = b.get("id") or ""
+            link = "[%s](__notion__%s)" % (title, cid)
+            lines.append("%s- 📄 %s" % (indent, link))
+            if bl.get("has_children"):
+                kids = _notion_fetch_children(token, b.get("id"))
+                inner = _notion_blocks_to_md(token, kids, depth + 1)
+                if inner.strip():
+                    lines.append(inner)
+            continue
+        elif t in ("bookmark", "embed", "video", "pdf", "file", "image", "audio", "link_preview"):
+            url = bl.get("url") or ""
+            if url:
+                lines.append("%s- 🔗 %s" % (indent, url))
+            continue
+        elif t == "table":
+            if bl.get("has_children"):
+                kids = _notion_fetch_children(token, b.get("id"))
+                for row in kids:
+                    if row.get("type") == "table_row":
+                        cells = row.get("table_row", {}).get("cells", [])
+                        rendered = []
+                        for cell in cells:
+                            rendered.append("".join(x.get("plain_text", "") for x in cell))
+                        lines.append(indent + "| " + " | ".join(rendered) + " |")
+            continue
+        elif t == "breadcrumb":
+            continue
+        elif t in ("column_list", "column"):
+            if bl.get("has_children"):
+                kids = _notion_fetch_children(token, b.get("id"))
+                inner = _notion_blocks_to_md(token, kids, depth)
+                if inner.strip():
+                    lines.append(inner)
+            continue
+        elif t == "toggle":
+            head = "▸ "
+        if head or rich.strip():
+            lines.append(indent + head + rich)
+        if bl.get("has_children"):
+            kids = _notion_fetch_children(token, b.get("id"))
+            inner = _notion_blocks_to_md(token, kids, depth + 1)
+            if inner.strip():
+                lines.append(inner)
+    return "\n".join(lines)
+def _notion_props_to_md(props):
+    lines = []
+    order = []
+    for k, v in (props or {}).items():
+        order.append((k, v))
+    title_lines = []
+    if "Name" in props:
+        for t in props["Name"].get("title", []):
+            title_lines.append(t.get("plain_text", ""))
+    if title_lines:
+        lines.append("# " + "".join(title_lines))
+    for k, v in order:
+        if k == "Name":
+            continue
+        typ = v.get("type")
+        txt = ""
+        if typ == "rich_text":
+            txt = "".join(x.get("plain_text", "") for x in v.get("rich_text", []))
+        elif typ == "title":
+            txt = "".join(x.get("plain_text", "") for x in v.get("title", []))
+        elif typ == "select":
+            s = v.get("select"); txt = s.get("name", "") if s else ""
+        elif typ == "status":
+            s = v.get("status"); txt = s.get("name", "") if s else ""
+        elif typ == "multi_select":
+            txt = ", ".join(x.get("name", "") for x in v.get("multi_select", []))
+        elif typ == "url":
+            txt = v.get("url", "")
+        elif typ == "number":
+            n = v.get("number"); txt = str(n) if n is not None else ""
+        elif typ == "date":
+            dt = v.get("date"); txt = (dt.get("start", "") if dt else "")
+        elif typ == "checkbox":
+            txt = "true" if v.get("checkbox") else "false"
+        elif typ == "people":
+            names = []
+            for p in v.get("people", []):
+                names.append(p.get("name") or p.get("id", ""))
+            txt = ", ".join(names)
+        elif typ == "email":
+            txt = v.get("email", "")
+        elif typ == "phone_number":
+            txt = v.get("phone_number", "")
+        elif typ == "rollup":
+            ro = v.get("rollup", {})
+            if ro.get("type") == "array":
+                arr = ro.get("array", [])
+                parts = []
+                for item in arr:
+                    it = item.get("type")
+                    if it == "rich_text":
+                        parts.append("".join(x.get("plain_text", "") for x in item.get("rich_text", [])))
+                    elif it == "people":
+                        parts.append(", ".join(p.get("name") or p.get("id","") for p in item.get("people", [])))
+                    elif it == "title":
+                        parts.append("".join(x.get("plain_text","") for x in item.get("title", [])))
+                    else:
+                        val = item.get(it)
+                        if isinstance(val, dict):
+                            parts.append(val.get("name","") or "")
+                        elif val is not None:
+                            parts.append(str(val))
+                txt = ", ".join(parts)
+        if txt.strip():
+            lines.append("- **" + k + ":** " + txt)
+    return "\n".join(lines)
+
+
+
 
 def _apply_cli_config(changes):
     """Sync config to Hermes via official CLI (source of truth) so it
@@ -696,6 +903,82 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
 
         if not self._check_auth():
             return self._send_json(401, {"success": False, "error": "Unauthorized: PIN diperlukan"})
+
+
+        if path == "/api/hermes/notion/config":
+            cfg = _notion_load()
+            return self._send_json(200, {"success": True, "configured": bool(cfg.get("token")), "database_id": cfg.get("database_id")})
+
+        if path == "/api/hermes/notion/databases":
+            cfg = _notion_load()
+            if not cfg.get("token"):
+                return self._send_json(400, {"success": False, "error": "Notion belum dikonfigurasi"})
+            st, res = _notion_api(cfg["token"], "POST", "search", {"filter": {"value": "database", "property": "object"}, "page_size": 25})
+            dbs = [{"id": d["id"], "title": _notion_title(d)} for d in res.get("results", [])] if st == 200 else []
+            return self._send_json(st, {"success": st == 200, "databases": dbs, "error": res.get("message") if st != 200 else None})
+
+        if path == "/api/hermes/notion/pages":
+            cfg = _notion_load()
+            if not cfg.get("token") or not cfg.get("database_id"):
+                return self._send_json(400, {"success": False, "error": "Notion database belum diatur"})
+            q = urllib.parse.parse_qs(parsed.query).get("q", [""])[0]
+            filt = {"property": "Name", "title": {"contains": q}} if q else None
+            body = {"page_size": 50}
+            if filt:
+                body["filter"] = filt
+            st, res = _notion_api(cfg["token"], "POST", "databases/" + cfg["database_id"] + "/query", body)
+            if st != 200:
+                return self._send_json(st, {"success": False, "error": res.get("message")})
+            pages = []
+            for pg in res.get("results", []):
+                pages.append({"id": pg["id"], "title": _page_title(pg.get("properties", {}))})
+            return self._send_json(200, {"success": True, "pages": pages})
+
+        if path == "/api/hermes/notion/page":
+            pid = urllib.parse.parse_qs(parsed.query).get("id", [""])[0]
+            cfg = _notion_load()
+            if not cfg.get("token") or not pid:
+                return self._send_json(400, {"success": False, "error": "Parameter id diperlukan"})
+            st, res = _notion_api(cfg["token"], "GET", "pages/" + pid)
+            if st != 200:
+                return self._send_json(st, {"success": False, "error": res.get("message")})
+            md = ""
+            props = res.get("properties")
+            if props:
+                p_md = _notion_props_to_md(props)
+                if p_md.strip():
+                    md = p_md + "\n"
+            st2, res2 = _notion_api(cfg["token"], "GET", "blocks/" + pid + "/children?page_size=100")
+            if st2 == 200:
+                b_md = _notion_blocks_to_md(cfg["token"], res2.get("results", []))
+                if b_md.strip():
+                    md = md + "\n" + b_md
+            return self._send_json(200, {"success": True, "markdown": md})
+
+        if path == "/api/hermes/notion/search":
+            cfg = _notion_load()
+            if not cfg.get("token"):
+                return self._send_json(400, {"success": False, "error": "Notion belum dikonfigurasi"})
+            q = urllib.parse.parse_qs(parsed.query).get("q", [""])[0]
+            body = {"page_size": 50}
+            if q:
+                body["query"] = q
+            st, res = _notion_api(cfg["token"], "POST", "search", body)
+            if st != 200:
+                return self._send_json(st, {"success": False, "error": res.get("message")})
+            items = []
+            for r in res.get("results", []):
+                if r.get("object") == "page":
+                    props = r.get("properties", {})
+                    title = ""
+                    for k, v in props.items():
+                        if isinstance(v, dict) and v.get("type") == "title":
+                            title = "".join(x.get("plain_text", "") for x in v.get("title", []))
+                            break
+                    items.append({"id": r.get("id"), "title": title or "(untitled)", "kind": "page"})
+                else:
+                    items.append({"id": r.get("id"), "title": _notion_title(r), "kind": "database"})
+            return self._send_json(200, {"success": True, "items": items})
 
         if path == "/api/hermes/system/health":
             return self._send_json(200, get_system_health())
@@ -1457,6 +1740,27 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
                 return self._send_json(200, {"success": True, "message": "Server dimatikan"})
             except Exception as e:
                 return self._send_json(500, {"success": False, "error": str(e)})
+
+
+        if path == "/api/hermes/notion/config":
+            action = (body.get("action") or "set").lower()
+            if action == "clear":
+                _notion_save({})
+                return self._send_json(200, {"success": True, "configured": False})
+            cfg = _notion_load()
+            token = (body.get("token") or "").strip() or cfg.get("token") or ""
+            if not token:
+                return self._send_json(400, {"success": False, "error": "Token wajib diisi"})
+            if body.get("database_id"):
+                cfg["database_id"] = body["database_id"]
+                _notion_save(cfg)
+                return self._send_json(200, {"success": True, "configured": True})
+            st, res = _notion_api(token, "POST", "search", {"filter": {"value": "database", "property": "object"}, "page_size": 1})
+            if st not in (200, 400):
+                return self._send_json(400, {"success": False, "error": "Token tidak valid atau Notion unreachable: " + str(res.get("message"))})
+            cfg["token"] = token
+            _notion_save(cfg)
+            return self._send_json(200, {"success": True, "configured": True, "validated": st == 200})
 
         return self._send_json(404, {"success": False, "error": "Endpoint not found"})
 

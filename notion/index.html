@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notion — Hermes Remote</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/hermes-icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg-page:#FAF8F5; --bg-card:#FFFFFF; --bg-subtle:#FAF7F0;
+      --card-border:#E8E2D9; --text-main:#1C1917; --text-muted:#78716C;
+      --blue-dev:#2563EB; --blue-hover:#1D4ED8; --blue-border:#93C5FD; --blue-soft:#EFF6FF;
+      --status-green:#22C55E; --status-green-bg:#DCFCE7; --status-green-text:#166534;
+      --danger-red:#DC2626; --danger-bg:#FEE2E2; --danger-border:#FCA5A5;
+      --font-sans:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;
+      --font-mono:'JetBrains Mono',monospace;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;outline:none}
+    html,body,*{scrollbar-width:none;-ms-overflow-style:none}
+    *::-webkit-scrollbar{display:none}
+    body{background:var(--bg-page);color:var(--text-main);font-family:var(--font-sans);min-height:100vh;line-height:1.5}
+    .wrap{max-width:880px;margin:0 auto;padding:32px 20px 64px}
+    .top{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+    .back{text-decoration:none;color:var(--text-muted);font-size:14px;border:1px solid var(--card-border);padding:6px 12px;border-radius:8px}
+    .back:hover{color:var(--blue-dev);border-color:var(--blue-border)}
+    h1{font-size:22px;font-weight:700}
+    .sub{color:var(--text-muted);font-size:13px;margin-bottom:24px;display:flex;align-items:center;gap:8px}
+    .badge{font-size:11px;padding:3px 8px;border-radius:99px;font-weight:600}
+    .badge.on{background:var(--status-green-bg);color:var(--status-green-text)}
+    .badge.off{background:var(--danger-bg);color:var(--danger-red)}
+    .card{background:var(--bg-card);border:1px solid var(--card-border);border-radius:14px;padding:20px;margin-top:16px}
+    .card h2{font-size:15px;margin-bottom:14px}
+    label{display:block;font-size:12px;color:var(--text-muted);margin-bottom:6px}
+    input[type=text],input[type=password],select{width:100%;padding:10px 14px;border:1px solid var(--card-border);border-radius:8px;font-family:var(--font-mono);font-size:14px;background:var(--bg-subtle)}
+    input:focus,select:focus{border-color:var(--blue-border)}
+    .row{display:flex;gap:10px;align-items:center}
+    .row .grow{flex:1}
+    .btn{border:none;border-radius:9px;padding:10px 16px;font-family:var(--font-sans);font-size:14px;font-weight:600;cursor:pointer;background:var(--blue-dev);color:#fff;white-space:nowrap}
+    .btn:hover{background:var(--blue-hover)}
+    .btn.ghost{background:transparent;border:1px solid var(--card-border);color:var(--text-main)}
+    .btn.danger{background:var(--danger-bg);color:var(--danger-red);border:1px solid var(--danger-border)}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .msg{font-size:13px;border-radius:8px;padding:10px 14px;margin-top:12px;display:none}
+    .msg.ok{display:block;background:var(--status-green-bg);color:var(--status-green-text)}
+    .msg.err{display:block;background:var(--danger-bg);color:var(--danger-red)}
+    .list{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+    .item{border:1px solid var(--card-border);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;background:var(--bg-card)}
+    .item:hover{border-color:var(--blue-border)}
+    .item .t{font-weight:600;font-size:14px}
+    .item .a{font-size:12px;color:var(--text-muted)}
+    .md{font-family:var(--font-mono);font-size:13px;line-height:1.7;white-space:pre-wrap;word-break:break-word}
+    .md h1,.md h2,.md h3{font-family:var(--font-sans);line-height:1.35;margin:14px 0 6px}
+    .md h1{font-size:20px}.md h2{font-size:17px}.md h3{font-size:15px}
+    .md p{margin:4px 0}
+    .md .bullet{margin:3px 0;padding-left:6px}
+    .md .num{margin:3px 0;padding-left:6px;display:flex;gap:8px}
+    .md .quote{border-left:3px solid var(--blue-border);padding:4px 10px;margin:6px 0;background:var(--blue-soft);border-radius:0 8px 8px 0;color:var(--text-main)}
+    .md .todo{display:block;margin:4px 0}
+    .md .todo input{margin-right:8px;accent-color:var(--blue-dev)}
+    .md code{background:var(--bg-subtle);border:1px solid var(--card-border);border-radius:4px;padding:1px 5px;font-family:var(--font-mono);font-size:12px}
+    .md pre{background:#1C1917;color:#E7E5E4;border-radius:10px;padding:12px 14px;margin:8px 0;overflow-x:auto}
+    .md pre code{background:transparent;border:none;color:inherit;padding:0}
+    .md hr{border:none;border-top:1px solid var(--card-border);margin:12px 0}
+    .md table{border-collapse:collapse;width:100%;margin:8px 0;font-size:12.5px}
+    .md th,.md td{border:1px solid var(--card-border);padding:6px 10px;text-align:left}
+    .md th{background:var(--bg-subtle);font-weight:600}
+    .md .subpage{display:inline-flex;align-items:center;gap:6px;background:var(--blue-soft);border:1px solid var(--blue-border);color:var(--blue-dev);border-radius:8px;padding:3px 10px;margin:2px 0;cursor:pointer;text-decoration:none;font-weight:600;font-size:13px}
+    .md .subpage:hover{background:var(--blue-dev);color:#fff}
+    .muted{color:var(--text-muted);font-size:13px}
+    .spinner{color:var(--blue-dev);font-size:13px}
+    .hide{display:none}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <a class="back" href="/">← Kembali</a>
+      <h1>Notion Integration</h1>
+      <span id="statusBadge" class="badge off">nonaktif</span>
+    </div>
+    <div class="sub">Fitur opsional — tarik/tulis halaman Notion (SSoT) dari Hermes Remote. Lepas pasang tanpa memengaruhi fungsi lokal.</div>
+
+    <div id="authCard" class="card hide">
+      <h2>Masukkan PIN</h2>
+      <div class="row">
+        <input class="grow" type="password" id="pinInput" placeholder="PIN akses..." autocomplete="off">
+        <button class="btn" id="pinBtn">Login</button>
+      </div>
+      <div class="msg" id="authMsg"></div>
+    </div>
+
+    <div id="configCard" class="card hide">
+      <h2>Konfigurasi</h2>
+      <label>Notion Integration Token</label>
+      <div class="row">
+        <input class="grow" type="password" id="tokenInput" placeholder="secret_xxx..." autocomplete="off">
+        <button class="btn" id="saveBtn">Simpan</button>
+      </div>
+      <div class="msg" id="cfgMsg"></div>
+    </div>
+
+    <div id="dbCard" class="card hide">
+      <h2>Database</h2>
+      <div class="row">
+        <select class="grow" id="dbSelect"></select>
+        <button class="btn" id="linkBtn">Gunakan</button>
+      </div>
+      <div class="msg" id="dbMsg"></div>
+    </div>
+
+    <div id="pagesCard" class="card hide">
+      <div class="row">
+        <h2 style="flex:1;margin:0">Halaman</h2>
+        <button class="btn ghost" id="detachBtn">Lepas</button>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <input class="grow" type="text" id="searchInput" placeholder="cari semua halaman Notion...">
+        <button class="btn ghost" id="searchBtn">Cari</button>
+      </div>
+      <div id="pagesList" class="list"></div>
+    </div>
+
+    <div id="pageCard" class="card hide">
+      <div class="row">
+        <h2 style="flex:1;margin:0" id="pageTitle">Halaman</h2>
+        <button class="btn ghost" id="backBtn">← Daftar</button>
+      </div>
+      <div class="md" id="pageBody" style="margin-top:14px"></div>
+    </div>
+  </div>
+
+  <script>
+    let pin = localStorage.getItem('hermes_pin') || '';
+    let cfg = null;
+    const $ = id => document.getElementById(id);
+
+    async function api(path, opts={}){
+      const headers = Object.assign({'X-Hermes-PIN': pin}, opts.headers||{});
+      if (opts.body) headers['Content-Type'] = 'application/json';
+      const res = await fetch(path, Object.assign({}, opts, {headers}));
+      let data = {};
+      try { data = await res.json(); } catch(e){}
+      return {status: res.status, data};
+    }
+
+    function guard(){
+      if (pin) return true;
+      $('authCard').classList.remove('hide');
+      return false;
+    }
+
+    function showMsg(id, text, ok){ $(id).innerHTML = text;
+      $(id).className = 'msg ' + (ok ? 'ok' : 'err');
+    }
+
+    async function loadCfg(){
+      if (!guard()) return;
+      const r = await api('/api/hermes/notion/config');
+      if (r.status === 401){
+        localStorage.removeItem('hermes_pin'); pin = '';
+        $('authCard').classList.remove('hide');
+        return;
+      }
+      if (r.status !== 200) return showMsg('cfgMsg', r.data.error || 'Gagal muat status', false);
+      cfg = r.data;
+      $('statusBadge').textContent = cfg.configured ? 'aktif' : 'nonaktif';
+      $('statusBadge').className = 'badge ' + (cfg.configured ? 'on' : 'off');
+      $('configCard').classList.toggle('hide', cfg.configured);
+      $('dbCard').classList.add('hide');
+      $('pagesCard').classList.toggle('hide', !cfg.configured);
+      if (cfg.configured) await loadPages();
+    }
+
+    async function saveToken(){
+      const token = $('tokenInput').value.trim();
+      if (!token) return showMsg('cfgMsg', 'Token wajib diisi', false);
+      $('saveBtn').disabled = true;
+      const r = await api('/api/hermes/notion/config', {method:'POST', body: JSON.stringify({action:'set', token})});
+      $('saveBtn').disabled = false;
+      if (!r.data.success) return showMsg('cfgMsg', r.data.error || 'Gagal menyimpan token', false);
+      showMsg('cfgMsg', r.data.validated ? 'Token valid.' : 'Token tersimpan (validasi lanjutan saat pilih database).', true);
+      await loadCfg();
+    }
+
+    async function loadDbs(){
+      if (!guard()) return;
+      const r = await api('/api/hermes/notion/databases');
+      if (!r.data.success) return showMsg('dbMsg', r.data.error || 'Gagal memuat database', false);
+      const sel = $('dbSelect');
+      sel.innerHTML = '';
+      r.data.databases.forEach(db=>{
+        const o = document.createElement('option');
+        o.value = db.id; o.textContent = db.title;
+        if (db.id === cfg.database_id) o.selected = true;
+        sel.appendChild(o);
+      });
+      if (!r.data.databases.length){
+        const o = document.createElement('option');
+        o.textContent = '(tidak ada database)'; sel.appendChild(o);
+      }
+      await loadPages();
+    }
+
+    async function linkDb(){
+      const dbId = $('dbSelect').value;
+      if (!dbId) return showMsg('dbMsg', 'Pilih database dulu', false);
+      const r = await api('/api/hermes/notion/config', {method:'POST', body: JSON.stringify({action:'set', token: (cfg&&cfg.token)||'', database_id: dbId})});
+      if (!r.data.success) return showMsg('dbMsg', r.data.error || 'Gagal memilih database', false);
+      showMsg('dbMsg', 'Database dipilih.', true);
+      await loadCfg();
+    }
+
+    async function detach(){
+      const r = await api('/api/hermes/notion/config', {method:'POST', body: JSON.stringify({action:'clear'})});
+      if (r.data.success) await loadCfg();
+    }
+
+    async function loadPages(){
+      const q = $('searchInput').value.trim();
+      const r = await api('/api/hermes/notion/search' + (q ? '?q=' + encodeURIComponent(q) : ''));
+      const box = $('pagesList');
+      box.innerHTML = '';
+      if (!r.data.success) return showMsg('dbMsg', r.data.error || 'Gagal mencari halaman', false);
+      if (!r.data.items || !r.data.items.length){
+        box.innerHTML = '<div class="muted">Tidak ada halaman ditemukan.</div>'; return;
+      }
+      r.data.items.forEach(p=>{
+        const el = document.createElement('div');
+        el.className = 'item';
+        el.innerHTML = '<div><div class="t"></div><div class="a"></div></div><button class="btn ghost">Buka</button>';
+        el.querySelector('.t').textContent = p.title;
+        el.querySelector('.a').textContent = p.id;
+        const opener = p.kind === 'page'
+          ? () => openPage(p.id, p.title)
+          : () => { showMsg('dbMsg', 'Ini database — pilih halaman di dalamnya dari daftar global.', false); };
+        el.querySelector('button').onclick = opener;
+        box.appendChild(el);
+      });
+    }
+
+    function escHtml(s){
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function inlineHtml(s){
+      s = s.replace(/\[([^\]]+)\]\(__notion__([a-f0-9-]+)\)/g, (m,title,id)=>{
+        return '<a href="#" class="subpage" data-notion="'+escHtml(id)+'" data-title="'+escHtml(title)+'">📄 '+escHtml(title)+'</a>';
+      });
+      s = s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+      s = s.replace(/`([^`]+)`/g,'<code>$1</code>');
+      return s;
+    }
+    function renderMarkdown(md){
+      const lines = md.split('\n');
+      const out = [];
+      let i = 0;
+      while (i < lines.length){
+        const line = lines[i];
+        // fenced code
+        if (/^```/.test(line.trim())){
+          const lang = line.trim().slice(3);
+          let buf = [];
+          i++;
+          while (i < lines.length && !/^```/.test(lines[i].trim())){
+            buf.push(lines[i]); i++;
+          }
+          i++; // closing fence
+          out.push('<pre><code>' + escHtml(buf.join('\n')) + '</code></pre>');
+          continue;
+        }
+        // table block
+        if (/^\|/.test(line.trim())){
+          const rows = [];
+          while (i < lines.length && /^\|/.test(lines[i].trim())){
+            rows.push(lines[i].trim().replace(/^\||$/g,''));
+            i++;
+          }
+          const parsed = rows.map(r => r.split('|').map(c => c.trim()).filter(c => c !== ''));
+          let html = '<table>';
+          parsed.forEach((row, idx)=>{
+            const tag = idx === 0 ? 'th' : 'td';
+            html += '<tr>' + row.map(c => '<'+tag+'>'+inlineHtml(escHtml(c))+'</'+tag+'>').join('') + '</tr>';
+          });
+          html += '</table>';
+          out.push(html);
+          continue;
+        }
+        const h = line.match(/^(#{1,3})\s+(.*)/);
+        if (h){ const lvl = h[1].length; out.push('<h'+lvl+'>'+inlineHtml(escHtml(h[2]))+'</h'+lvl+'>'); i++; continue; }
+        const todo = line.match(/^- \[([ xX])\]\s+(.*)/);
+        if (todo){ const chk = todo[1].toLowerCase()==='x' ? 'checked' : ''; out.push('<label class="todo"><input type="checkbox" '+chk+' disabled> '+inlineHtml(escHtml(todo[2]))+'</label>'); i++; continue; }
+        const bullet = line.match(/^-\s+(.*)/);
+        if (bullet){ out.push('<div class="bullet">'+inlineHtml(escHtml(bullet[1]))+'</div>'); i++; continue; }
+        const num = line.match(/^(\d+)\.\s+(.*)/);
+        if (num){ out.push('<div class="num"><span>'+num[1]+'.</span> '+inlineHtml(escHtml(num[2]))+'</div>'); i++; continue; }
+        const quote = line.match(/^>\s+(.*)/);
+        if (quote){ out.push('<div class="quote">'+inlineHtml(escHtml(quote[1]))+'</div>'); i++; continue; }
+        if (/^---+$/.test(line.trim())){ out.push('<hr>'); i++; continue; }
+        if (line.trim()) out.push('<p>'+inlineHtml(escHtml(line))+'</p>');
+        i++;
+      }
+      return out.join('');
+    }
+
+    async function openPage(id, title){
+      const r = await api('/api/hermes/notion/page?id=' + encodeURIComponent(id));
+      if (!r.data.success) return showMsg('dbMsg', r.data.error || 'Gagal memuat halaman', false);
+      $('pageTitle').textContent = title;
+      const md = r.data.markdown || '(kosong)';
+      $('pageBody').innerHTML = renderMarkdown(md);
+      $('pagesCard').classList.add('hide');
+      $('pageCard').classList.remove('hide');
+    }
+
+    $('saveBtn').onclick = saveToken;
+    $('linkBtn').onclick = linkDb;
+    $('detachBtn').onclick = detach;
+    $('searchBtn').onclick = loadPages;
+    $('searchInput').addEventListener('keydown', e=>{ if(e.key==='Enter') loadPages(); });
+    $('backBtn').onclick = () => { $('pageCard').classList.add('hide'); $('pagesCard').classList.remove('hide'); };
+    $('pageCard').addEventListener('click', e=>{
+      const a = e.target.closest('a.subpage');
+      if (a) e.preventDefault(), openPage(a.dataset.notion, a.dataset.title);
+    });
+    $('pinBtn').onclick = () => {
+      const p = $('pinInput').value.trim();
+      if (!p) return showMsg('authMsg', 'PIN wajib diisi', false);
+      localStorage.setItem('hermes_pin', p);
+      pin = p;
+      $('authCard').classList.add('hide');
+      loadCfg();
+    };
+
+    if (pin) loadCfg(); else $('authCard').classList.remove('hide');
+  </script>
+</body>
+</html>
