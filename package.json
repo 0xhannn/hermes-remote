@@ -10,6 +10,7 @@
     "auth/",
     "brain/",
     "context/",
+    "logs/",
     "skills/",
     "settings/",
     "index.html",
