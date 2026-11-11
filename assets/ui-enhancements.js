@@ -86,6 +86,15 @@
       btn.setAttribute('aria-expanded', String(!open));
       group.querySelector('.nav-group-body').hidden = open;
     });
+    // tandai Notion aktif saat berada di halaman /notion/
+    const here = window.location.pathname.replace(/\/+$/,'');
+    const notionLink = group.querySelector('a[href="/notion/"]');
+    if (notionLink && here === '/notion') {
+      notionLink.classList.add('is-active');
+      notionLink.setAttribute('aria-current', 'page');
+      btn.setAttribute('aria-expanded', 'true');
+      group.querySelector('.nav-group-body').hidden = false;
+    }
     window.__hermesNotionNavInjected = true;
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', injectNotionNav);
