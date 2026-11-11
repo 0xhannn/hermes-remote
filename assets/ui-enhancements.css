@@ -246,6 +246,15 @@ body { margin: 0; padding: 0 !important; }
   .sidebar-brand, .sidebar-foot { display: flex; }
   .sidebar-nav { flex-direction: column; }
   .main-content { padding: 12px 14px 48px; }
+  /* Header sticky — tetap terlihat saat konten di-scroll */
+  .main-content .container > header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: #FAF8F5;
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+  }
   /* Backdrop di belakang drawer */
   .sidebar-backdrop {
     position: fixed;
@@ -263,6 +272,15 @@ body { margin: 0; padding: 0 !important; }
     align-items: center;
     gap: 8px;
     margin-bottom: 8px;
+  }
+  /* Notifikasi toast — menyesuaikan lebar layar HP */
+  .toast {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    max-width: none;
+    text-align: center;
+    width: auto;
   }
   /* Tombol toggle hamburger di header */
   .sidebar-toggle {
