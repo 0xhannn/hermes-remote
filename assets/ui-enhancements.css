@@ -257,6 +257,13 @@ body { margin: 0; padding: 0 !important; }
     transition: opacity .2s ease, visibility .2s;
   }
   .sidebar-backdrop.show { opacity: 1; visibility: visible; }
+  /* Baris header mobile: hamburger + brand sejajar */
+  .mobile-header-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
   /* Tombol toggle hamburger di header */
   .sidebar-toggle {
     display: inline-flex;
@@ -277,7 +284,7 @@ body { margin: 0; padding: 0 !important; }
 }
 /* Desktop: sembunyikan kontrol mobile — di dalam min-width biar tidak menang atas @media 767px */
 @media (min-width: 768px) {
-  .sidebar-toggle, .mobile-brand, .sidebar-backdrop { display: none; }
+  .sidebar-toggle, .mobile-brand, .mobile-header-row, .sidebar-backdrop { display: none; }
 }
 
 /* ── Dropdown Integrasi (di-inject via ui-enhancements.js) ── */

@@ -113,12 +113,20 @@
       document.body.appendChild(backdrop);
     }
 
-    // header
-    const header = main.querySelector(':scope > header') || main;
+    // header (ada di dalam .container, bukan anak langsung main)
+    const header = main.querySelector('header') || main;
     if (!header) return;
 
+    // baris flex berisi toggle + brand (vertical center)
+    let row = header.querySelector('.mobile-header-row');
+    if (!row) {
+      row = document.createElement('div');
+      row.className = 'mobile-header-row';
+      header.insertBefore(row, header.firstChild);
+    }
+
     // tombol toggle hamburger
-    let toggle = header.querySelector('.sidebar-toggle');
+    let toggle = row.querySelector('.sidebar-toggle');
     if (!toggle) {
       toggle = document.createElement('button');
       toggle.type = 'button';
@@ -126,16 +134,16 @@
       toggle.setAttribute('aria-label', 'Buka menu');
       toggle.setAttribute('aria-expanded', 'false');
       toggle.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>';
-      header.insertBefore(toggle, header.firstChild);
+      row.appendChild(toggle);
     }
 
     // brand Hermes Remote di header (mobile only)
-    let brand = header.querySelector('.mobile-brand');
+    let brand = row.querySelector('.mobile-brand');
     if (!brand) {
       brand = document.createElement('span');
       brand.className = 'mobile-brand';
       brand.textContent = 'Hermes Remote';
-      header.insertBefore(brand, toggle.nextSibling);
+      row.appendChild(brand);
     }
 
     const close = () => {
