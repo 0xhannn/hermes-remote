@@ -169,12 +169,14 @@
   <main class="main-content">
   <div class="container">
 <div class="wrap">
-    <div class="top">
-      <a class="back" href="/">← Kembali</a>
-      <h1>Notion Integration</h1>
-      <span id="statusBadge" class="badge off">nonaktif</span>
-    </div>
-    <div class="sub">Fitur opsional — tarik/tulis halaman Notion (SSoT) dari Hermes Remote. Lepas pasang tanpa memengaruhi fungsi lokal.</div>
+    <header>
+      <div class="brand-row">
+        <div class="page-mark"></div>
+        <div class="status-pill"><span class="status-dot"></span> NOTION</div>
+      </div>
+      <h1>Notion</h1>
+      <p class="subtitle">Integrasi Notion (SSoT) — tarik/tulis halaman dari Hermes Remote.</p>
+    </header>
 
     <div id="authCard" class="card hide">
       <h2>Masukkan PIN</h2>
@@ -539,6 +541,9 @@
 
     if (pin) loadCfg(); else $('authCard').classList.remove('hide');
   </script>
+  <footer>
+      Hermes Remote &bull; By PH Labs &bull; Agent Gateway
+    </footer>
   </div>
   </main>
   </div>
