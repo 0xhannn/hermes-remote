@@ -97,6 +97,66 @@
     }
     window.__hermesNotionNavInjected = true;
   }
+
+  // ── Inject kontrol mobile: hamburger + brand + backdrop (semua halaman panel) ──
+  function injectMobileShell() {
+    if (window.__hermesMobileShellInjected) return;
+    const sidebar = document.querySelector('#hermes-sidebar');
+    const main = document.querySelector('.main-content');
+    if (!sidebar || !main) return;
+
+    // backdrop
+    let backdrop = document.querySelector('.sidebar-backdrop');
+    if (!backdrop) {
+      backdrop = document.createElement('div');
+      backdrop.className = 'sidebar-backdrop';
+      document.body.appendChild(backdrop);
+    }
+
+    // header
+    const header = main.querySelector(':scope > header') || main;
+    if (!header) return;
+
+    // tombol toggle hamburger
+    let toggle = header.querySelector('.sidebar-toggle');
+    if (!toggle) {
+      toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'sidebar-toggle';
+      toggle.setAttribute('aria-label', 'Buka menu');
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>';
+      header.insertBefore(toggle, header.firstChild);
+    }
+
+    // brand Hermes Remote di header (mobile only)
+    let brand = header.querySelector('.mobile-brand');
+    if (!brand) {
+      brand = document.createElement('span');
+      brand.className = 'mobile-brand';
+      brand.textContent = 'Hermes Remote';
+      header.insertBefore(brand, toggle.nextSibling);
+    }
+
+    const close = () => {
+      sidebar.classList.remove('open');
+      backdrop.classList.remove('show');
+      toggle.setAttribute('aria-expanded', 'false');
+    };
+
+    toggle.addEventListener('click', (e) => {
+      e.preventDefault();
+      const isOpen = sidebar.classList.toggle('open');
+      backdrop.classList.toggle('show', isOpen);
+      toggle.setAttribute('aria-expanded', String(isOpen));
+    });
+    backdrop.addEventListener('click', close);
+
+    window.__hermesMobileShellInjected = true;
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', injectMobileShell);
+  else injectMobileShell();
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', injectNotionNav);
   else injectNotionNav();
 

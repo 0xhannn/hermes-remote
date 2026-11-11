@@ -225,23 +225,60 @@ body { margin: 0; padding: 0 !important; }
 .main-content footer { margin-bottom: 8px; }
 @media (max-width: 767px) {
   .app-shell { flex-direction: column; }
+  /* Sidebar jadi off-canvas drawer (collapsed default) */
   .sidebar {
-    position: sticky;
+    position: fixed;
     top: 0;
-    transform: none;
-    width: 100%;
+    left: 0;
+    width: 264px;
+    height: 100vh;
+    margin: 0;
     flex: 0 0 auto;
-    height: auto;
-    flex-direction: row;
-    align-items: center;
-    overflow-x: auto;
-    z-index: 20;
+    flex-direction: column;
+    align-items: stretch;
+    overflow-y: auto;
+    transform: translateX(-100%);
+    transition: transform .22s ease;
+    z-index: 40;
+    box-shadow: none;
   }
-  .sidebar-nav { flex-direction: row; }
-  .sidebar-brand, .sidebar-foot { display: none; }
-  .main-content { padding: 16px 16px 48px; }
+  .sidebar.open { transform: translateX(0); box-shadow: 0 8px 32px rgba(0,0,0,.18); }
+  .sidebar-brand, .sidebar-foot { display: flex; }
+  .sidebar-nav { flex-direction: column; }
+  .main-content { padding: 12px 14px 48px; }
+  /* Backdrop di belakang drawer */
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.35);
+    z-index: 35;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .2s ease, visibility .2s;
+  }
+  .sidebar-backdrop.show { opacity: 1; visibility: visible; }
+  /* Tombol toggle hamburger di header */
+  .sidebar-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: none;
+    background: transparent;
+    color: #1C1917;
+    cursor: pointer;
+    padding: 0;
+    margin-right: 6px;
+  }
+  .sidebar-toggle svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .sidebar-toggle:hover { background: #F5F0E6; }
+  .mobile-brand { font-weight: 600; font-size: 15px; color: #1C1917; white-space: nowrap; }
 }
-.sidebar-toggle { display: none !important; }
+/* Desktop: sembunyikan kontrol mobile — di dalam min-width biar tidak menang atas @media 767px */
+@media (min-width: 768px) {
+  .sidebar-toggle, .mobile-brand, .sidebar-backdrop { display: none; }
+}
 
 /* ── Dropdown Integrasi (di-inject via ui-enhancements.js) ── */
 .nav-group { display: flex; flex-direction: column; }

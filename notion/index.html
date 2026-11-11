@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hermes Remote</title>
-  <link rel="stylesheet" href="/assets/ui-enhancements.css?v=10">
+  <link rel="stylesheet" href="/assets/ui-enhancements.css?v=11">
   <link rel="icon" type="image/svg+xml" href="/assets/hermes-icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -116,7 +116,7 @@
     .notion .ntoggle{padding:3px 2px}
     .notion .ntoggle summary{cursor:pointer;list-style:none;font-weight:500}
     .notion .ntoggle summary::-webkit-details-marker{display:none}
-    .notion .ntoggle summary::before{content:"▸ ";color:rgba(55,53,47,.5);display:inline-block;transition:transform .15s;width:18px}
+    .notion .ntoggle summary::before{content:"â–¸ ";color:rgba(55,53,47,.5);display:inline-block;transition:transform .15s;width:18px}
     .notion .ntoggle[open] summary::before{transform:rotate(90deg)}
     .notion .ntg-body{padding-left:1.1em}
     .notion .nquote{border-left:3px solid currentColor;padding:0.2em 0.9em;margin:6px 0;font-size:1.2em;line-height:1.4}
@@ -174,7 +174,7 @@
         <header>
           <div class="brand-row"><div class="page-mark"></div><div class="status-pill"><span class="status-dot"></span> Notion</div></div>
           <h1>Notion</h1>
-          <p class="subtitle">Halaman Aturan dan sub-halaman — render 1:1 dari API Notion.</p>
+          <p class="subtitle">Halaman Aturan dan sub-halaman â€” render 1:1 dari API Notion.</p>
         </header>
 
         <div class="row" style="margin-bottom:16px">
@@ -205,14 +205,14 @@
         </div>
 
         <div class="card hide" id="pageCard">
-          <div class="row"><h2 style="flex:1;margin:0" id="pageTitle">Halaman</h2><button class="btn" id="backBtn" onclick="closePage()">← Daftar</button></div>
+          <div class="row"><h2 style="flex:1;margin:0" id="pageTitle">Halaman</h2><button class="btn" id="backBtn" onclick="closePage()">â† Daftar</button></div>
           <div class="md" id="pageBody" style="margin-top:14px"></div>
         </div>
       </div>
     </main>
   </div>
 
-  <script src="/assets/ui-enhancements.js?v=2"></script>
+  <script src="/assets/ui-enhancements.js?v=11"></script>
   <script>
     let pin = localStorage.getItem('hermes_pin') || '';
     let cfg = null;
@@ -298,7 +298,7 @@
         const ico = document.createElement('span');
         ico.className = 'tico';
         ico.style.background = colors[depth % colors.length];
-        ico.textContent = '•';
+        ico.textContent = 'â€¢';
         const info = document.createElement('div');
         info.className = 'tinfo';
         const t = document.createElement('div');
@@ -356,7 +356,7 @@
           case 'heading_3': html += '<h3 class="nh3">'+ntAttr(b.rt)+'</h3>'; break;
           case 'heading_4': html += '<h4 class="nh4">'+ntAttr(b.rt)+'</h4>'; break;
           case 'bulleted_list_item':
-            html += '<div class="nli nb"><span class="nmark">•</span><div class="ncont">'+ntAttr(b.rt)+(b.children?'<div class="nsub">'+renderNotion(b.children,depth+1)+'</div>':'')+'</div></div>';
+            html += '<div class="nli nb"><span class="nmark">â€¢</span><div class="ncont">'+ntAttr(b.rt)+(b.children?'<div class="nsub">'+renderNotion(b.children,depth+1)+'</div>':'')+'</div></div>';
             break;
           case 'numbered_list_item':
             if (!lastWasNum) numCount = 0;
@@ -371,7 +371,7 @@
             break;
           case 'quote': html += '<blockquote class="nquote">'+ntAttr(b.rt)+(b.children?renderNotion(b.children,depth+1):'')+'</blockquote>'; break;
           case 'callout':
-            html += '<div class="ncallout"><span class="nco-ico">'+(b.icon?escHtml(b.icon):'💡')+'</span><div class="nco-body">'+ntAttr(b.rt)+(b.children?renderNotion(b.children,depth+1):'')+'</div></div>';
+            html += '<div class="ncallout"><span class="nco-ico">'+(b.icon?escHtml(b.icon):'ðŸ’¡')+'</span><div class="nco-body">'+ntAttr(b.rt)+(b.children?renderNotion(b.children,depth+1):'')+'</div></div>';
             break;
           case 'code':
             html += '<div class="ncode-wrap"><span class="ncode-lang">'+escHtml(b.lang||'')+'</span><pre class="ncode"><code>'+escHtml((b.rt||[]).map(x=>x.t).join(''))+'</code></pre></div>';
@@ -392,7 +392,7 @@
             break;
           case 'bookmark':
           case 'link_preview':
-            html += '<a class="nbookmark" href="'+escHtml(b.url||'')+'" target="_blank" rel="noopener"><span class="nbk-icon">'+(b.icon?escHtml(b.icon):'🔗')+'</span><span class="nbk-txt">'+ntAttr(b.rt)+'<span class="nbk-url">'+escHtml(b.url||'')+'</span></span></a>';
+            html += '<a class="nbookmark" href="'+escHtml(b.url||'')+'" target="_blank" rel="noopener"><span class="nbk-icon">'+(b.icon?escHtml(b.icon):'ðŸ”—')+'</span><span class="nbk-txt">'+ntAttr(b.rt)+'<span class="nbk-url">'+escHtml(b.url||'')+'</span></span></a>';
             break;
           case 'image':
           case 'embed':
@@ -402,7 +402,7 @@
           case 'audio':
             html += '<figure class="nmedia">';
             if (b.type==='image' && b.url) html += '<img src="'+escHtml(b.url)+'" alt="">';
-            else if (b.url) html += '<a href="'+escHtml(b.url)+'" target="_blank" rel="noopener">🔗 '+escHtml(b.url)+'</a>';
+            else if (b.url) html += '<a href="'+escHtml(b.url)+'" target="_blank" rel="noopener">ðŸ”— '+escHtml(b.url)+'</a>';
             if (b.caption) html += '<figcaption>'+escHtml(b.caption)+'</figcaption>';
             html += '</figure>';
             break;
@@ -503,7 +503,7 @@
 
     // init
     (async function init(){
-      // auth guard via cookie (hermesGuard) — kalau belum auth, redirect ke /hermes/auth/
+      // auth guard via cookie (hermesGuard) â€” kalau belum auth, redirect ke /hermes/auth/
       const ok = await hermesGuard('/notion/');
       if (!ok) return;
       await loadCfg();
