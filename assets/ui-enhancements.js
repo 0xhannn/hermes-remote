@@ -168,6 +168,15 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', injectNotionNav);
   else injectNotionNav();
 
+  // Deteksi keyboard mobile (input fokus) → pindah toast ke atas biar tidak tenggelam
+  const setKeyboardState = () => {
+    const el = document.activeElement;
+    const open = !!(el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT'));
+    document.documentElement.classList.toggle('keyboard-open', open);
+  };
+  document.addEventListener('focusin', setKeyboardState);
+  document.addEventListener('focusout', setKeyboardState);
+
   // Tangkap pada capture phase agar tidak kalah cepat oleh preventDefault / stopPropagation
   document.addEventListener('pointerdown', (e) => {
     const target = e.target.closest('button, .btn, a, .clickable, .hub-card, .model-picker-option, .provider-card, .tree-leaf, input[type="submit"]');

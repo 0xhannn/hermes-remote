@@ -281,6 +281,12 @@ body { margin: 0; padding: 0 !important; }
     max-width: none;
     text-align: center;
     width: auto;
+    z-index: 2000;
+  }
+  /* Keyboard terbuka (input fokus) → toast naik, tidak tenggelam di balik keyboard */
+  html.keyboard-open .toast {
+    bottom: auto;
+    top: calc(12px + env(safe-area-inset-top, 0px));
   }
   /* Tombol toggle hamburger di header */
   .sidebar-toggle {
