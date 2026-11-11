@@ -258,9 +258,9 @@ body { margin: 0; padding: 0 !important; }
     border-bottom: 1px solid #E8E2D9;
     margin: 0;
   }
-  /* Konten diberi jarak atas biar tidak ketutup bar fixed */
+  /* Konten diberi jarak atas biar tidak ketutup bar fixed + spacing bar→headline */
   .main-content {
-    padding-top: 64px;
+    padding-top: 88px;
   }
   /* Backdrop di belakang drawer */
   .sidebar-backdrop {
