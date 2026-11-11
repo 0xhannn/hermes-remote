@@ -66,6 +66,9 @@
     .msg{font-size:13px;border-radius:8px;padding:10px 14px;display:none}
     .msg.ok{display:block;background:var(--status-green-bg);color:var(--status-green-text);border:1px solid var(--status-green)}
     .msg.err{display:block;background:var(--danger-bg);color:var(--danger-red);border:1px solid var(--danger-border)}
+    .toast{position:fixed;bottom:24px;right:24px;background:#1C1917;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-family:var(--font-mono);display:none;z-index:2000;box-shadow:0 4px 12px rgba(0,0,0,.15);max-width:calc(100vw - 48px)}
+    .toast.ok{background:var(--status-green-text)}
+    .toast.err{background:var(--danger-red)}
     .list{display:flex;flex-direction:column;gap:0;margin-top:4px}
     .tnode{position:relative}
     .tchildren{margin-left:18px;padding-left:16px;border-left:2px solid var(--tree-line,#d8d5d0)}
@@ -224,7 +227,24 @@
       return {status: res.status, data};
     }
 
-    function showMsg(id, text, ok){ $(id).textContent = text; $(id).className = 'msg ' + (ok ? 'ok' : 'err'); }
+    let toastTimer = null;
+    const msgTimers = {};
+    function showToast(msg, ok){
+      const t = $('toast');
+      t.textContent = msg;
+      t.className = 'toast ' + (ok ? 'ok' : 'err');
+      t.style.display = 'block';
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { t.style.display = 'none'; }, 3500);
+    }
+    function showMsg(id, text, ok){
+      const el = $(id);
+      el.textContent = text;
+      el.className = 'msg ' + (ok ? 'ok' : 'err');
+      showToast(text, ok);
+      clearTimeout(msgTimers[id]);
+      msgTimers[id] = setTimeout(() => { el.className = 'msg'; el.textContent = ''; }, 3500);
+    }
 
     async function loadCfg(){
       const r = await api('/api/hermes/notion/config');
@@ -423,7 +443,7 @@
       if (!ok) return;
       const r = await api('/api/hermes/notion/config', {method:'POST', body: JSON.stringify({action:'clear'})});
       if (r.status === 401){ localStorage.removeItem('hermes_pin'); pin=''; window.location.href='/hermes/auth/?next='+encodeURIComponent('/notion/'); return; }
-      if (!r.data.success) return alert(r.data.error || 'Gagal melepas');
+      if (!r.data.success) return showToast(r.data.error || 'Gagal melepas', false);
       $('pageCard').classList.add('hide');
       $('pagesList').innerHTML = '';
       $('statusBadgeLabel').textContent = 'nonaktif';
@@ -489,6 +509,7 @@
       await loadCfg();
     })();
   </script>
+  <div class="toast" id="toast">Notifikasi</div>
   <div id="confirmModal" class="modal-overlay">
     <div class="modal-card">
       <div class="modal-header"><h3 id="confirmTitle">Lepas integrasi Notion?</h3></div>
