@@ -1,14 +1,7 @@
-__pycache__/
-*.py[cod]
-*$py.class
-*.env
-.env*
-.pin_secret
-state.db
-*.tar.gz
-*.tgz
-.DS_Store
-
-server/_sk.py
-server/_srv_err.log
-server/_srv_out.log
+# Runtime / log / helper lokal (tidak untuk rilis)
+server/*.log
+server/srv_out.txt
+server/wmic_out.txt
+server/*.bat
+*.log
+*.txt
