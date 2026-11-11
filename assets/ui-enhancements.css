@@ -266,7 +266,7 @@ body { margin: 0; padding: 0 !important; }
   transition: transform .15s ease;
 }
 .nav-group-btn[aria-expanded="true"] .nav-group-caret { transform: rotate(180deg); }
-.nav-group-body { display: flex; flex-direction: column; gap: 2px; padding-left: 8px; }
+.nav-group-body { display: flex; flex-direction: column; gap: 6px; padding-left: 12px; margin-top: 6px; }
 .nav-group-body[hidden] { display: none; }
 .nav-group-link { min-height: 40px; }
 
