@@ -1,20 +1,22 @@
 {
   "name": "hermes-remote",
-  "version": "1.0.20",
+  "version": "1.0.21",
   "description": "Full-spectrum local-first web control center and system manager for Hermes Agent",
   "main": "bin/cli.js",
   "files": [
-    "bin/",
-    "server/",
+    "README.md",
+    "index.html",
     "assets/",
     "auth/",
+    "bin/",
     "brain/",
     "context/",
+    "cron/",
     "logs/",
-    "skills/",
+    "notion/",
+    "server/",
     "settings/",
-    "index.html",
-    "README.md"
+    "skills/"
   ],
   "bin": {
     "hermes-remote": "bin/cli.js"
