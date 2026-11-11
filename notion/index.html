@@ -174,7 +174,6 @@
     }
 
     async function loadPages(){
-      if (!guard()) return;
       const q = $('searchInput').value.trim();
       const r = await api('/api/hermes/notion/search' + (q ? '?q=' + encodeURIComponent(q) : ''));
       const box = $('pagesList');
@@ -197,10 +196,14 @@
       $('pageBody').textContent = 'Memuat...';
       $('pagesCard').classList.add('hide');
       $('pageCard').classList.remove('hide');
-      const r = await api('/api/hermes/notion/page_blocks?id=' + encodeURIComponent(id));
-      if (r.status === 401){ localStorage.removeItem('hermes_pin'); pin=''; $('authCard').classList.remove('hide'); return; }
+      const r = await api('/api/hermes/notion/page?id=' + encodeURIComponent(id));
+      if (r.status === 401){
+        localStorage.removeItem('hermes_pin'); pin='';
+        window.location.href = '/hermes/auth/?next=' + encodeURIComponent('/notion/');
+        return;
+      }
       if (!r.data.success) return $('pageBody').textContent = r.data.error || 'Gagal memuat halaman';
-      renderMd($('pageBody'), r.data.markdown);
+      renderMd($('pageBody'), r.data.markdown || '(Halaman kosong)');
       // subpage nested: render link yang bisa dibuka
       $('pageBody').querySelectorAll('a.subpage').forEach(a=>{
         a.addEventListener('click', e=>{ e.preventDefault(); openPage(a.dataset.id, a.textContent); });
@@ -221,8 +224,12 @@
     }
     function renderMd(el, md){
       const lines = md.split('\n');
-      let html = '', list = null, inTable = false, tableRows = [];
-      const flush = () => { if (!list) return; html += (list==='ul'?'<ul>':'<ol>') + list.map(x=>'<li>'+x+'</li>').join('') + (list==='ul'?'</ul>':'</ol>'); list = null; };
+      let html = '', listType = null, listItems = [], inTable = false, tableRows = [];
+      const flush = () => {
+        if (!listType) return;
+        html += (listType==='ul'?'<ul>':'<ol>') + listItems.map(x=>'<li>'+x+'</li>').join('') + (listType==='ul'?'</ul>':'</ol>');
+        listType = null; listItems = [];
+      };
       for (let raw of lines){
         if (/^\|/.test(raw) && /\|$/.test(raw)){
           if (!inTable){ flush(); inTable = true; tableRows = []; }
@@ -239,8 +246,16 @@
           }
           tableRows = [];
         }
-        if (/^\s*[-*+]\s+/.test(raw)){ if (list!=='ul'){ flush(); list='ul'; } list.push(inline(raw.replace(/^\s*[-*+]\s+/,''))); continue; }
-        if (/^\s*\d+\.\s+/.test(raw)){ if (list!=='ol'){ flush(); list='ol'; } list.push(inline(raw.replace(/^\s*\d+\.\s+/,''))); continue; }
+        if (/^\s*[-*+]\s+/.test(raw)){
+          if (listType!=='ul'){ flush(); listType='ul'; listItems=[]; }
+          listItems.push(inline(raw.replace(/^\s*[-*+]\s+/,'')));
+          continue;
+        }
+        if (/^\s*\d+\.\s+/.test(raw)){
+          if (listType!=='ol'){ flush(); listType='ol'; listItems=[]; }
+          listItems.push(inline(raw.replace(/^\s*\d+\.\s+/,'')));
+          continue;
+        }
         flush();
         if (/^#{1,6}\s+/.test(raw)){
           const m = raw.match(/^(#{1,6})\s+(.*)$/);
