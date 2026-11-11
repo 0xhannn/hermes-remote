@@ -242,3 +242,26 @@ body { margin: 0; padding: 0 !important; }
   .main-content { padding: 16px 16px 48px; }
 }
 .sidebar-toggle { display: none !important; }
+
+/* ── Dropdown Integrasi (di-inject via ui-enhancements.js) ── */
+.nav-group { display: flex; flex-direction: column; }
+.nav-group-btn {
+  display: flex; align-items: center; gap: 8px;
+  min-height: 44px; padding: 0 12px; width: 100%;
+  border: none; border-radius: 8px; background: transparent;
+  color: #1C1917; font: inherit; font-weight: 500;
+  cursor: pointer; text-align: left;
+}
+.nav-group-btn:hover { background: #F5F0E6; }
+.nav-group-btn[aria-expanded="true"] { background: #F5F0E6; }
+.nav-group-title { flex: 1; }
+.nav-group-caret {
+  width: 16px; height: 16px; stroke: currentColor; fill: none;
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  transition: transform .15s ease;
+}
+.nav-group-btn[aria-expanded="true"] .nav-group-caret { transform: rotate(180deg); }
+.nav-group-body { display: flex; flex-direction: column; gap: 2px; padding-left: 8px; }
+.nav-group-body[hidden] { display: none; }
+.nav-group-link { min-height: 40px; }
+
