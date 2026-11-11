@@ -52,7 +52,18 @@
     .msg{font-size:13px;border-radius:8px;padding:10px 14px;display:none}
     .msg.ok{display:block;background:var(--status-green-bg);color:var(--status-green-text);border:1px solid var(--status-green)}
     .msg.err{display:block;background:var(--danger-bg);color:var(--danger-red);border:1px solid var(--danger-border)}
-    .list{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+    .list{display:flex;flex-direction:column;gap:0;margin-top:4px}
+    .tnode{position:relative}
+    .tchildren{margin-left:18px;padding-left:16px;border-left:2px solid var(--tree-line,#d8d5d0)}
+    .tchildren .tnode::before{content:'';position:absolute;left:-16px;top:24px;width:16px;height:2px;background:var(--tree-line,#d8d5d0)}
+    .tchildren .tnode:last-child::after{content:'';position:absolute;left:-18px;top:26px;bottom:-14px;width:2px;background:var(--bg-card)}
+    .trow{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;border:1px solid transparent;background:transparent;cursor:pointer}
+    .trow:hover{background:rgba(55,53,47,.04);border-color:var(--card-border)}
+    .tico{flex:0 0 auto;width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;box-shadow:0 1px 2px rgba(0,0,0,.15)}
+    .tinfo{flex:1;min-width:0}
+    .tinfo .t{font-weight:600;font-size:14px;color:var(--text,#1a1a1a);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .tinfo .a{font-size:11px;color:var(--text-muted,#8a8784);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .trow .btn{flex:0 0 auto}
     .item{border:1px solid var(--card-border);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;background:var(--bg-card)}
     .item:hover{border-color:var(--blue-border)}
     .item .t{font-weight:600;font-size:14px}
@@ -240,19 +251,40 @@
         if (par) par.children.push(p);
         else roots.push(p);
       });
-      const renderNode = (p, depth) => {
-        const el = document.createElement('div');
-        el.className = 'item' + (depth ? ' nested' : '');
-        el.style.paddingLeft = (8 + depth * 16) + 'px';
-        if (depth) el.style.borderLeft = '2px solid rgba(55,53,47,.12)';
-        el.innerHTML = '<div><div class="t"></div><div class="a"></div></div><button class="btn ghost">Buka</button>';
-        el.querySelector('.t').textContent = p.title;
-        el.querySelector('.a').textContent = 'sub-halaman';
-        el.querySelector('button').onclick = (e) => { e.stopPropagation(); openPage(p.id, p.title); };
-        box.appendChild(el);
-        (p.children || []).forEach(c => renderNode(c, depth + 1));
+      const colors = ['#337EA9','#9065B0','#448361','#D9730D','#C14C8A','#9F6B53'];
+      const renderNode = (p, depth, path) => {
+        const node = document.createElement('div');
+        node.className = 'tnode';
+        const row = document.createElement('div');
+        row.className = 'trow';
+        const ico = document.createElement('span');
+        ico.className = 'tico';
+        ico.style.background = colors[depth % colors.length];
+        ico.textContent = '•';
+        const info = document.createElement('div');
+        info.className = 'tinfo';
+        const t = document.createElement('div');
+        t.className = 't';
+        t.textContent = p.title;
+        const a = document.createElement('div');
+        a.className = 'a';
+        a.textContent = path.length ? path.join(' > ') : '';
+        const btn = document.createElement('button');
+        btn.className = 'btn ghost';
+        btn.textContent = 'Buka';
+        btn.onclick = (e) => { e.stopPropagation(); openPage(p.id, p.title); };
+        info.appendChild(t); info.appendChild(a);
+        row.appendChild(ico); row.appendChild(info); row.appendChild(btn);
+        node.appendChild(row);
+        if ((p.children || []).length){
+          const ch = document.createElement('div');
+          ch.className = 'tchildren';
+          p.children.forEach(c => ch.appendChild(renderNode(c, depth + 1, path.concat([p.title]))));
+          node.appendChild(ch);
+        }
+        return node;
       };
-      roots.forEach(p => renderNode(p, 0));
+      roots.forEach(p => box.appendChild(renderNode(p, 0, [])));
     }
 
     function escHtml(s){
