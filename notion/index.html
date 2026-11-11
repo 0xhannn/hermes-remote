@@ -24,15 +24,17 @@
     html,body,*{scrollbar-width:none;-ms-overflow-style:none}
     *::-webkit-scrollbar{display:none}
     body{background:var(--bg-page);color:var(--text-main);font-family:var(--font-sans);min-height:100vh}
-    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity .18s}
-    .modal-backdrop.open{opacity:1;pointer-events:auto}
-    .modal{background:var(--bg-card);border:1px solid var(--card-border);border-radius:14px;padding:24px;width:min(400px,90vw);box-shadow:0 16px 48px rgba(0,0,0,.18)}
-    .modal h3{margin:0 0 8px;font-size:17px}
-    .modal p{margin:0 0 20px;color:var(--text-muted);font-size:13px;line-height:1.5}
-    .modal-actions{display:flex;gap:10px;justify-content:flex-end}
+    .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(2px);padding:20px}
+    .modal-card{background:#fff;border:1px solid var(--card-border);border-radius:14px;padding:24px;width:100%;max-width:420px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 30px rgba(0,0,0,.12)}
+    .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+    .modal-header h3{margin:0;font-size:16px;font-weight:700;min-width:0;overflow-wrap:anywhere}
+    .modal-body{overflow-y:auto;flex:1;min-height:0;display:flex;flex-direction:column;gap:12px}
+    .modal-body p{margin:0;font-size:14px;line-height:1.5;color:var(--text-muted)}
+    .modal-footer{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:16px;padding-top:12px;border-top:1px solid var(--card-border)}
     .btn{background:var(--accent);color:#fff;border:0;padding:8px 16px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit}
     .btn-ghost{background:transparent;color:var(--text-muted);border:1px solid var(--card-border)}
     .btn-danger{background:var(--danger-red)}
+    @media(max-width:767px){.modal-card{max-height:calc(100dvh - 24px);padding:18px}.modal-footer{padding-bottom:env(safe-area-inset-bottom)}}
     .hide{display:none!important}
     .container{width:100%;max-width:100%}
     header{display:block;margin-bottom:32px}
@@ -417,7 +419,7 @@
     function closePage(){ $('pageCard').classList.add('hide'); $('pagesCard').classList.remove('hide'); }
 
     async function detach(){
-      const ok = await showConfirm('Lepas integrasi Notion?', 'Semua halaman & sub-halaman akan hilang dari daftar. Token lama tetap aman di Notion.');
+      const ok = await showConfirm('Semua halaman & sub-halaman akan hilang dari daftar. Token lama tetap aman di Notion.', 'Lepas integrasi Notion?');
       if (!ok) return;
       const r = await api('/api/hermes/notion/config', {method:'POST', body: JSON.stringify({action:'clear'})});
       if (r.status === 401){ localStorage.removeItem('hermes_pin'); pin=''; window.location.href='/hermes/auth/?next='+encodeURIComponent('/notion/'); return; }
@@ -431,21 +433,48 @@
       $('tokenInput').value = '';
     }
 
-    function showConfirm(title, msg){
-      $('confirmTitle').textContent = title;
-      $('confirmMsg').textContent = msg;
-      const bd = $('confirmBackdrop');
-      bd.classList.add('open');
+    let confirmHistoryOpen = false;
+    let confirmResolver = null;
+    let modalSkipPop = 0;
+
+    function showConfirm(message, title){
       return new Promise(resolve => {
-        const done = val => { bd.classList.remove('open'); $('confirmOk').removeEventListener('click', onOk); $('confirmCancel').removeEventListener('click', onCancel); bd.removeEventListener('click', onBd); resolve(val); };
-        const onOk = () => done(true);
-        const onCancel = () => done(false);
-        const onBd = e => { if (e.target === bd) done(false); };
-        $('confirmOk').addEventListener('click', onOk);
-        $('confirmCancel').addEventListener('click', onCancel);
-        bd.addEventListener('click', onBd);
+        confirmResolver = resolve;
+        $('confirmTitle').textContent = title || 'Konfirmasi';
+        $('confirmMessage').textContent = message || '';
+        if (!confirmHistoryOpen){
+          history.pushState({ hermesModal: 'confirm' }, '', location.href);
+          confirmHistoryOpen = true;
+        }
+        $('confirmModal').style.display = 'flex';
       });
     }
+
+    function acceptConfirm(){
+      const res = confirmResolver;
+      confirmResolver = null;
+      if (!confirmHistoryOpen){ if (res) res(true); return; }
+      confirmHistoryOpen = false;
+      $('confirmModal').style.display = 'none';
+      modalSkipPop++;
+      history.back();
+      if (res) res(true);
+    }
+
+    function closeConfirm(fromBack){
+      if (!confirmHistoryOpen) return;
+      confirmHistoryOpen = false;
+      $('confirmModal').style.display = 'none';
+      const res = confirmResolver;
+      confirmResolver = null;
+      if (res) res(false);
+      if (!fromBack){ modalSkipPop++; history.back(); }
+    }
+
+    window.addEventListener('popstate', () => {
+      if (modalSkipPop){ modalSkipPop--; return; }
+      if (confirmHistoryOpen) closeConfirm(true);
+    });
 
     $('pageCard').addEventListener('click', e=>{
       const a = e.target.closest('a[data-notion]');
@@ -460,15 +489,15 @@
       await loadCfg();
     })();
   </script>
-  <div class="modal-backdrop" id="confirmBackdrop">
-    <div class="modal" role="dialog" aria-modal="true">
-      <h3 id="confirmTitle">Lepas integrasi Notion?</h3>
-      <p id="confirmMsg">Semua halaman &amp; sub-halaman akan hilang dari daftar. Token lama tetap aman di Notion.</p>
-      <div class="modal-actions">
-        <button class="btn btn-ghost" id="confirmCancel">Batal</button>
-        <button class="btn btn-danger" id="confirmOk">Lepas</button>
+  <div id="confirmModal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header"><h3 id="confirmTitle">Lepas integrasi Notion?</h3></div>
+      <div class="modal-body"><p id="confirmMessage">Semua halaman &amp; sub-halaman akan hilang dari daftar. Token lama tetap aman di Notion.</p></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" type="button" onclick="closeConfirm()">Batal</button>
+        <button class="btn btn-danger" type="button" onclick="acceptConfirm()">Lepas</button>
       </div>
     </div>
   </div>
-</body>
+  </body>
 </html>
