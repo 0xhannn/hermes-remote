@@ -246,14 +246,14 @@ body { margin: 0; padding: 0 !important; }
   .sidebar-brand, .sidebar-foot { display: flex; }
   .sidebar-nav { flex-direction: column; }
   .main-content { padding: 12px 14px 48px; }
-  /* Header sticky — tetap terlihat saat konten di-scroll */
-  .main-content .container > header {
+  /* Hanya baris kontrol (hamburger + brand) yang sticky — headline ikut scroll */
+  .main-content .container > header .mobile-header-row {
     position: sticky;
     top: 0;
-    z-index: 30;
+    z-index: 35;
     background: #FAF8F5;
-    padding-bottom: 8px;
-    margin-bottom: 4px;
+    padding: 2px 0 6px;
+    margin: 0 0 6px;
   }
   /* Backdrop di belakang drawer */
   .sidebar-backdrop {
@@ -277,7 +277,7 @@ body { margin: 0; padding: 0 !important; }
   .toast {
     left: 16px;
     right: 16px;
-    bottom: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     max-width: none;
     text-align: center;
     width: auto;
