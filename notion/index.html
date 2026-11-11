@@ -231,15 +231,28 @@
       box.innerHTML = '';
       if (!r.data.success) return showMsg('cfgMsg', r.data.error || 'Gagal mencari halaman', false);
       if (!r.data.items || !r.data.items.length){ box.innerHTML = '<div class="empty">Tidak ada halaman ditemukan.</div>'; return; }
+      // bangun tree dari parent
+      const byId = {};
+      r.data.items.forEach(p=>{ byId[p.id] = p; p.children = []; });
+      const roots = [];
       r.data.items.forEach(p=>{
+        const par = p.parent && byId[p.parent];
+        if (par) par.children.push(p);
+        else roots.push(p);
+      });
+      const renderNode = (p, depth) => {
         const el = document.createElement('div');
-        el.className = 'item';
+        el.className = 'item' + (depth ? ' nested' : '');
+        el.style.paddingLeft = (8 + depth * 16) + 'px';
+        if (depth) el.style.borderLeft = '2px solid rgba(55,53,47,.12)';
         el.innerHTML = '<div><div class="t"></div><div class="a"></div></div><button class="btn ghost">Buka</button>';
         el.querySelector('.t').textContent = p.title;
-        el.querySelector('.a').textContent = p.kind || 'halaman';
-        el.querySelector('button').onclick = () => openPage(p.id, p.title);
+        el.querySelector('.a').textContent = 'sub-halaman';
+        el.querySelector('button').onclick = (e) => { e.stopPropagation(); openPage(p.id, p.title); };
         box.appendChild(el);
-      });
+        (p.children || []).forEach(c => renderNode(c, depth + 1));
+      };
+      roots.forEach(p => renderNode(p, 0));
     }
 
     function escHtml(s){
@@ -354,6 +367,20 @@
     }
 
     function closePage(){ $('pageCard').classList.add('hide'); $('pagesCard').classList.remove('hide'); }
+
+    async function detach(){
+      if (!confirm('Lepas integrasi Notion? Semua halaman & sub-halaman akan hilang dari daftar. Token lama tetap aman di Notion.')) return;
+      const r = await api('/api/hermes/notion/config', {method:'POST', body: JSON.stringify({action:'clear'})});
+      if (r.status === 401){ localStorage.removeItem('hermes_pin'); pin=''; window.location.href='/hermes/auth/?next='+encodeURIComponent('/notion/'); return; }
+      if (!r.data.success) return alert(r.data.error || 'Gagal melepas');
+      $('pageCard').classList.add('hide');
+      $('pagesList').innerHTML = '';
+      $('statusBadge').textContent = 'nonaktif';
+      $('statusBadge').className = 'badge off';
+      $('configCard').classList.remove('hide');
+      $('pagesCard').classList.add('hide');
+      $('tokenInput').value = '';
+    }
 
     $('pageCard').addEventListener('click', e=>{
       const a = e.target.closest('a[data-notion]');

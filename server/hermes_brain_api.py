@@ -1142,7 +1142,7 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
                         if isinstance(v, dict) and v.get("type") == "title":
                             title = "".join(x.get("plain_text", "") for x in v.get("title", []))
                             break
-                    items.append({"id": r.get("id"), "title": title or "(untitled)", "kind": "page"})
+                    items.append({"id": r.get("id"), "title": title or "(untitled)", "kind": "page", "parent": (r.get("parent") or {}).get("page_id") or ""})
                 else:
                     items.append({"id": r.get("id"), "title": _notion_title(r), "kind": "database"})
             return self._send_json(200, {"success": True, "items": items})
