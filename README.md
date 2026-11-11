@@ -105,6 +105,29 @@ settings/  auth/            pengaturan dan pintu PIN
 assets/                     gaya, ikon, suara
 ```
 
+## Tangkapan layar
+
+**Desktop** (1280×800) — Dashboard, Brain, Context, Skills:
+
+| | |
+|---|---|
+| ![Dashboard](assets/screenshots/desktop_dashboard.png) | ![Brain](assets/screenshots/desktop_brain.png) |
+| ![Context](assets/screenshots/desktop_context.png) | ![Skills](assets/screenshots/desktop_skills.png) |
+
+Desktop — Logs, Settings, dan integrasi Notion:
+
+| | |
+|---|---|
+| ![Logs](assets/screenshots/desktop_logs.png) | ![Settings](assets/screenshots/desktop_settings.png) |
+| ![Notion](assets/screenshots/desktop_notion.png) | |
+
+**Mobile** (390×844):
+
+| | |
+|---|---|
+| ![Dashboard](assets/screenshots/mobile_dashboard.png) | ![Brain](assets/screenshots/mobile_brain.png) |
+| ![Notion](assets/screenshots/mobile_notion.png) | |
+
 ## Lisensi
 
 [MIT](LICENSE). Copyright (c) 2026 PH Labs.
