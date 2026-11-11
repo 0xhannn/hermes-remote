@@ -662,8 +662,20 @@ def _page_title(props):
     return "(untitled)"
 
 def _notion_fetch_children(token, block_id):
-    st, res = _notion_api(token, "GET", "blocks/" + block_id + "/children?page_size=100")
-    return res.get("results", []) if st == 200 else []
+    results = []
+    cursor = None
+    while True:
+        url = "blocks/" + block_id + "/children?page_size=100"
+        if cursor:
+            url += "&start_cursor=" + cursor
+        st, res = _notion_api(token, "GET", url)
+        if st != 200 or not isinstance(res, dict):
+            break
+        results.extend(res.get("results", []))
+        if not res.get("has_more") or not res.get("next_cursor"):
+            break
+        cursor = res.get("next_cursor")
+    return results
 
 def _rich_md(seg):
     out = []
@@ -694,6 +706,8 @@ def _notion_blocks_to_md(token, blocks, depth=0):
     indent = "  " * depth
     for b in blocks:
         t = b.get("type")
+        if t != "numbered_list_item":
+            n = 0
         bl = b.get(t, {}) or {}
         rich = _rich_md(bl.get("rich_text", []))
         head = ""
@@ -831,19 +845,23 @@ def _notion_tree(token, block_id, depth=0, seen=None):
     if key in seen:
         return []
     seen.add(key)
-    st, res = _notion_api(token, "GET", "blocks/" + block_id + "/children?page_size=100")
-    results = res.get("results", []) if st == 200 and isinstance(res, dict) else []
+    results = _notion_fetch_children(token, block_id)
     out = []
     for b in results:
         t = b.get("type")
         bl = b.get(t, {}) or {}
         node = {"type": t}
         if t == "table_row":
-            node["cells"] = [[_rich_node(cell) for cell in bl.get("cells", [])]]
+            node["cells"] = [_rich_node(cell) for cell in bl.get("cells", [])]
         elif t in ("paragraph", "heading_1", "heading_2", "heading_3",
-                   "bulleted_list_item", "numbered_list_item", "toggle",
-                   "quote"):
+                   "bulleted_list_item", "numbered_list_item",
+                   "toggle", "quote"):
             node["rt"] = _rich_node(bl.get("rich_text"))
+            node["color"] = bl.get("color")
+        elif t == "synced_block":
+            sb_id = (bl.get("synced_from") or {}).get("block_id")
+            if sb_id:
+                node["children"] = _notion_tree(token, sb_id, depth + 1, seen)
         elif t == "to_do":
             node["rt"] = _rich_node(bl.get("rich_text"))
             node["checked"] = bool(bl.get("checked"))
@@ -1075,10 +1093,9 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
                 p_md = _notion_props_to_md(props)
                 if p_md.strip():
                     md = p_md + "\n"
-            st2, res2 = _notion_api(cfg["token"], "GET", "blocks/" + pid + "/children?page_size=100")
-            if st2 == 200:
-                b_md = _notion_blocks_to_md(cfg["token"], res2.get("results", []))
-                if b_md.strip():
+            results2 = _notion_fetch_children(cfg["token"], pid)
+            b_md = _notion_blocks_to_md(cfg["token"], results2)
+            if b_md.strip():
                     md = md + "\n" + b_md
             return self._send_json(200, {"success": True, "markdown": md})
 
@@ -1092,16 +1109,8 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
             st, page = _notion_api(cfg["token"], "GET", "pages/" + pid)
             if st != 200:
                 return self._send_json(st, {"success": False, "error": page.get("message")})
-            title = ""
-            props = page.get("properties", {})
-            for k, v in props.items():
-                if isinstance(v, dict) and v.get("type") == "title":
-                    title = "".join(x.get("plain_text", "") for x in v.get("title", []))
-                    break
-            icon = ""
-            ic = page.get("icon")
-            if isinstance(ic, dict) and ic.get("type") == "emoji":
-                icon = ic.get("emoji") or ""
+            title = _page_title(page.get("properties", {}))
+            icon = _notion_icon(cfg["token"], pid)
             cover_url = ""
             cv = page.get("cover")
             if isinstance(cv, dict):
