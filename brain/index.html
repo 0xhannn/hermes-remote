@@ -243,7 +243,7 @@
       text-align: center;
     }
   </style>
-  <link rel="stylesheet" href="/assets/ui-enhancements.css?v=9">
+  <link rel="stylesheet" href="/assets/ui-enhancements.css?v=30">
 </head>
 <body>
 <div class="app-shell">
@@ -445,12 +445,12 @@
               ${isCurrentActive ? '<span class="active-badge">ACTIVE</span>' : ''}
             </div>
             <div class="prov-info" style="margin-top: 8px;">
-              <div>Ã¢â‚¬Â¢ Base URL: ${p.base_url}</div>
+              <div>• Base URL: ${p.base_url}</div>
               <div style="display: flex; align-items: center; gap: 6px; margin: 4px 0;">
-                <span>Ã¢â‚¬Â¢ Model:</span>
+                <span>• Model:</span>
                 <span>${p.model}</span>
               </div>
-              <div>Ã¢â‚¬Â¢ Key / Auth: ${p.has_key ? 'Ã¢Å“â€œ Terpasang' : 'Ã¢Å“â€” Kosong'}</div>
+              <div>• Key / Auth: ${p.has_key ? '✓ Terpasang' : '✗ Kosong'}</div>
             </div>
           </div>
           <div class="prov-actions">
@@ -523,7 +523,7 @@
         models = providerData?.models?.length ? providerData.models : (providerData?.model ? [providerData.model] : []);
       }
       const selectedModel = target === 'quick' ? APP_STATE?.active?.model : providerData?.model;
-      document.getElementById('modelPickerTitle').textContent = target === 'quick' ? 'Pilih Model' : `Pilih Model Ã¢â‚¬â€ ${provider}`;
+      document.getElementById('modelPickerTitle').textContent = target === 'quick' ? 'Pilih Model' : `Pilih Model — ${provider}`;
       list.replaceChildren();
       if (!models.length) {
         const empty = document.createElement('p');
@@ -705,7 +705,7 @@
       localhost:8093 &bull; Hermes Control Center &bull; Agent Gateway
     </footer>
 
-  <script src="/assets/ui-enhancements.js?v=9"></script>
+  <script src="/assets/ui-enhancements.js?v=30"></script>
 </main>
 </div>
 </body>

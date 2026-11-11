@@ -256,7 +256,7 @@
       .modal-box { max-width: calc(100% - 24px); }
     }
   </style>
-  <link rel="stylesheet" href="/assets/ui-enhancements.css?v=10">
+  <link rel="stylesheet" href="/assets/ui-enhancements.css?v=30">
 </head>
 <body>
 <div class="app-shell">
@@ -367,10 +367,10 @@
         <div style="display: flex; flex-direction: column; gap: 6px;">
           <label style="font-size: 12px; font-weight: 600; color: var(--text-muted);">KATEGORI MASUKAN</label>
           <select id="feedbackCategory" style="padding: 10px 14px; border-radius: 8px; border: 1px solid var(--card-border); background: var(--bg-card); font-size: 14px; color: var(--text-main);">
-            <option value="Saran Fitur">Ã°Å¸â€™Â¡ Saran Fitur Baru</option>
-            <option value="Laporan Bug">Ã°Å¸Ââ€º Laporan Masalah / Bug</option>
-            <option value="Peningkatan UX">Ã°Å¸Å½Â¨ Peningkatan Desain / UX</option>
-            <option value="Lainnya">Ã°Å¸â€œÂ Catatan Lainnya</option>
+            <option value="Saran Fitur">💡 Saran Fitur Baru</option>
+            <option value="Laporan Bug">🐛 Laporan Masalah / Bug</option>
+            <option value="Peningkatan UX">🎨 Peningkatan Desain / UX</option>
+            <option value="Lainnya">📝 Catatan Lainnya</option>
           </select>
         </div>
         <div style="display: flex; flex-direction: column; gap: 6px;">
@@ -453,14 +453,14 @@
   <!-- Modular Brain Export Modal (Checklist & Component Selection) -->
   <div id="exportModal" class="modal-backdrop">
     <div class="modal-box" style="max-width: 520px; max-height: 85vh; display: flex; flex-direction: column;">
-      <div class="modal-title">Ã°Å¸â€œÂ¦ Export Modular Brain Package</div>
+      <div class="modal-title">📦 Export Modular Brain Package</div>
       <div class="modal-desc" style="margin-bottom: 12px;">Pilih komponen spesifik yang ingin di-package ke file arsip terkompres (.tar.gz) untuk dijual, dibagikan, atau dicadangkan:</div>
 
       <div style="overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; padding-right: 4px;">
         <label style="display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: var(--bg-card); border: 1px solid var(--card-border); border-radius: 8px; cursor: pointer;">
           <input type="checkbox" id="expPersona" checked style="margin-top: 3px; accent-color: var(--accent);">
           <div>
-            <div style="font-weight: 600; font-size: 13px;">Ã°Å¸Å½Â­ Persona &amp; Core Prompt</div>
+            <div style="font-weight: 600; font-size: 13px;">🎭 Persona &amp; Core Prompt</div>
             <div style="font-size: 12px; color: var(--text-muted);">SOUL.md, IDENTITY.md, USER.md, TOOLS.md (Identitas &amp; gaya agent)</div>
           </div>
         </label>
@@ -468,7 +468,7 @@
         <label style="display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: var(--bg-card); border: 1px solid var(--card-border); border-radius: 8px; cursor: pointer;">
           <input type="checkbox" id="expMemory" checked style="margin-top: 3px; accent-color: var(--accent);">
           <div>
-            <div style="font-weight: 600; font-size: 13px;">Ã°Å¸Â§Â  Persistent Memory</div>
+            <div style="font-weight: 600; font-size: 13px;">🧠 Persistent Memory</div>
             <div style="font-size: 12px; color: var(--text-muted);">MEMORY.md &amp; direktori memories/ (Pengetahuan &amp; catatan awet)</div>
           </div>
         </label>
@@ -476,7 +476,7 @@
         <label style="display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: var(--bg-card); border: 1px solid var(--card-border); border-radius: 8px; cursor: pointer;">
           <input type="checkbox" id="expConfig" checked style="margin-top: 3px; accent-color: var(--accent);">
           <div>
-            <div style="font-weight: 600; font-size: 13px;">Ã¢Å¡â„¢Ã¯Â¸Â System Configuration</div>
+            <div style="font-weight: 600; font-size: 13px;">⚙️ System Configuration</div>
             <div style="font-size: 12px; color: var(--text-muted);">config.yaml &amp; auth.json (Model, custom providers &amp; parameter)</div>
           </div>
         </label>
@@ -485,7 +485,7 @@
           <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer;">
             <input type="checkbox" id="expSkills" checked style="margin-top: 3px; accent-color: var(--accent);">
             <div>
-              <div style="font-weight: 600; font-size: 13px;">Ã¢Å¡Â¡ Modular Skills</div>
+              <div style="font-weight: 600; font-size: 13px;">⚡ Modular Skills</div>
               <div style="font-size: 12px; color: var(--text-muted);">Kemampuan teknis, automasi, &amp; SOP skill</div>
             </div>
           </label>
@@ -761,7 +761,7 @@
       });
     }
 
-    // Update flow: ada pembaruan Ã¢â€ â€™ tombol Ã¢â€ â€™ klik Ã¢â€ â€™ perintah muncul Ã¢â€ â€™ salin Ã¢â€ â€™ shutdown service
+    // Update flow: ada pembaruan → tombol → klik → perintah muncul → salin → shutdown service
     const updateVersionInfo = document.getElementById('updateVersionInfo');
     const updateCommandBox = document.getElementById('updateCommandBox');
     const showUpdateBtn = document.getElementById('showUpdateBtn');
@@ -774,10 +774,10 @@
         const data = await res.json();
         if (!data.success) throw new Error(data.error || 'gagal');
         if (data.has_update) {
-          updateVersionInfo.textContent = 'Terpasang v' + (data.local_version || '?') + ' Ã‚Â· npm v' + (data.latest_version || '?');
+          updateVersionInfo.textContent = 'Terpasang v' + (data.local_version || '?') + ' · npm v' + (data.latest_version || '?');
           showUpdateBtn.style.display = 'inline-flex';
         } else {
-          updateVersionInfo.textContent = 'Terpasang v' + (data.local_version || '?') + ' Ã‚Â· sudah terbaru';
+          updateVersionInfo.textContent = 'Terpasang v' + (data.local_version || '?') + ' · sudah terbaru';
         }
       } catch (err) {
         updateVersionInfo.textContent = 'Gagal memeriksa versi npm.';
@@ -808,7 +808,7 @@
           copied = false;
         }
       }
-      copyUpdateBtn.textContent = copied ? 'Tersalin Ã‚Â· mematikan server' : 'Gagal salin';
+      copyUpdateBtn.textContent = copied ? 'Tersalin · mematikan server' : 'Gagal salin';
       try {
         await fetch('/api/hermes/system/update/shutdown', {
           method: 'POST',
@@ -1123,7 +1123,7 @@
 
   </script>
   <script src="/assets/auth-guard.js"></script>
-  <script src="/assets/ui-enhancements.js?v=10"></script>
+  <script src="/assets/ui-enhancements.js?v=30"></script>
 </main>
 </div>
 </body>

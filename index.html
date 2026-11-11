@@ -268,7 +268,7 @@
       text-align: center;
     }
   </style>
-  <link rel="stylesheet" href="/assets/ui-enhancements.css?v=9">
+  <link rel="stylesheet" href="/assets/ui-enhancements.css?v=30">
 </head>
 <body>
 <div class="app-shell">
@@ -310,48 +310,48 @@
         <!-- Module 1: Brain -->
         <a href="/brain/" class="nav-module">
           <div>
-            <span class="module-badge badge-brain">Ã°Å¸Â§Â  BRAIN RUNTIME</span>
+            <span class="module-badge badge-brain">🧠 BRAIN RUNTIME</span>
             <div class="module-title">Hermes Brain</div>
             <p class="module-desc">Setting model aktif, pemilihan multi-provider, switch model secara real-time via core config.</p>
           </div>
-          <div class="module-action">Buka Brain Control Ã¢â€ â€™</div>
+          <div class="module-action">Buka Brain Control →</div>
         </a>
 
         <!-- Module 2: Context -->
         <a href="/context/" class="nav-module">
           <div>
-            <span class="module-badge badge-context">Ã°Å¸â€œÅ¡ CONTEXT &amp; MEMORY</span>
+            <span class="module-badge badge-context">📚 CONTEXT &amp; MEMORY</span>
             <div class="module-title">Hermes Context</div>
             <p class="module-desc">Pusat kendali User Profile (USER.md) dan Memori Jangka Panjang (MEMORY.md) dengan live sync.</p>
           </div>
-          <div class="module-action">Buka Context Vault Ã¢â€ â€™</div>
+          <div class="module-action">Buka Context Vault →</div>
         </a>
 
         <!-- Module 3: Skills -->
         <a href="/skills/" class="nav-module">
           <div>
-            <span class="module-badge" style="background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D;">Ã¢Å¡Â¡ SKILLS &amp; TOOLS</span>
+            <span class="module-badge" style="background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D;">⚡ SKILLS &amp; TOOLS</span>
             <div class="module-title">Hermes Skills</div>
             <p class="module-desc">Audit procedural skills, inspeksi instruksi teknis, edit file SKILL.md, dan hapus modul agent secara langsung.</p>
           </div>
-          <div class="module-action">Buka Skills Audit Ã¢â€ â€™</div>
+          <div class="module-action">Buka Skills Audit →</div>
         </a>
 
         <!-- Module 4: Settings & Data -->
         <a href="/settings/" class="nav-module">
           <div>
-            <span class="module-badge" style="background: #E0E7FF; color: #3730A3; border: 1px solid #C7D2FE;">Ã¢Å¡â„¢Ã¯Â¸Â SYSTEM SETTINGS</span>
+            <span class="module-badge" style="background: #E0E7FF; color: #3730A3; border: 1px solid #C7D2FE;">⚙️ SYSTEM SETTINGS</span>
             <div class="module-title">Settings &amp; Backup</div>
             <p class="module-desc">Brain &amp; Config Backup (portable .tar.gz bundle), import konfigurasi, dan manajemen sesi logout.</p>
           </div>
-          <div class="module-action">Buka Settings &amp; Data Ã¢â€ â€™</div>
+          <div class="module-action">Buka Settings &amp; Data →</div>
         </a>
       </div>
     </div>
 
     <div class="arch-card" id="systemHealthCard">
       <div class="arch-title" style="justify-content:space-between;">
-        <span>System Health Ã‚Â· Live</span>
+        <span>System Health · Live</span>
         <button id="refreshHealthBtn" type="button" style="min-height:44px;padding:8px 12px;border:1px solid var(--card-border);border-radius:8px;background:#fff;color:var(--blue-dev);font:600 12px 'JetBrains Mono',monospace;cursor:pointer;">Refresh</button>
       </div>
       <div id="healthServices" class="health-grid" aria-live="polite"><div class="health-meta">Memuat status layanan...</div></div>
@@ -363,11 +363,11 @@
     <div class="arch-card">
       <div class="arch-title">Core Architecture Overview</div>
       <div class="tree-box">
-        <div class="tree-item"><span class="tree-folder">Ã°Å¸â€œÂ localhost:8093</span> <span class="tree-desc">Ã¢â‚¬â€ Root Dashboard Portal (standalone)</span></div>
-        <div class="tree-item" style="padding-left: 20px;"><span class="tree-folder">Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ Ã°Å¸Â§Â  /brain</span> <span class="tree-desc">Ã¢â‚¬â€ Setting &amp; Switch Model / Providers (CLI Core 1:1)</span></div>
-        <div class="tree-item" style="padding-left: 20px;"><span class="tree-folder">Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ Ã°Å¸â€œÅ¡ /context</span> <span class="tree-desc">Ã¢â‚¬â€ Profil Master (USER.md) &amp; Persistent Memory (MEMORY.md)</span></div>
-        <div class="tree-item" style="padding-left: 20px;"><span class="tree-folder">Ã¢â€Å“Ã¢â€â‚¬Ã¢â€â‚¬ Ã¢Å¡Â¡ /skills</span> <span class="tree-desc">Ã¢â‚¬â€ Audit, Edit, Tambah &amp; Hapus Kemampuan Teknis (SKILL.md)</span></div>
-        <div class="tree-item" style="padding-left: 20px;"><span class="tree-folder">Ã¢â€â€Ã¢â€â‚¬Ã¢â€â‚¬ Ã¢Å¡â„¢Ã¯Â¸Â /settings</span> <span class="tree-desc">Ã¢â‚¬â€ Brain &amp; Config Backup (portable bundle) &amp; Logout Session</span></div>
+        <div class="tree-item"><span class="tree-folder">📁 localhost:8093</span> <span class="tree-desc">— Root Dashboard Portal (standalone)</span></div>
+        <div class="tree-item" style="padding-left: 20px;"><span class="tree-folder">├── 🧠 /brain</span> <span class="tree-desc">— Setting &amp; Switch Model / Providers (CLI Core 1:1)</span></div>
+        <div class="tree-item" style="padding-left: 20px;"><span class="tree-folder">├── 📚 /context</span> <span class="tree-desc">— Profil Master (USER.md) &amp; Persistent Memory (MEMORY.md)</span></div>
+        <div class="tree-item" style="padding-left: 20px;"><span class="tree-folder">├── ⚡ /skills</span> <span class="tree-desc">— Audit, Edit, Tambah &amp; Hapus Kemampuan Teknis (SKILL.md)</span></div>
+        <div class="tree-item" style="padding-left: 20px;"><span class="tree-folder">└── ⚙️ /settings</span> <span class="tree-desc">— Brain &amp; Config Backup (portable bundle) &amp; Logout Session</span></div>
       </div>
     </div>
 
@@ -406,10 +406,10 @@
           if (!res.ok || !data.success) throw new Error(data.error || `HTTP ${res.status}`);
           healthServices.innerHTML = data.services.map(service => {
             const active = service.active === 'active';
-            return `<div class="health-item"><div class="health-item-head"><span>${service.unit}</span><span class="health-state ${active ? 'ok' : ''}">${active ? 'ACTIVE' : service.active.toUpperCase()}</span></div><div class="health-meta">PID ${service.pid || 'Ã¢â‚¬â€'} Ã‚Â· Restart ${service.restarts}x</div></div>`;
+            return `<div class="health-item"><div class="health-item-head"><span>${service.unit}</span><span class="health-state ${active ? 'ok' : ''}">${active ? 'ACTIVE' : service.active.toUpperCase()}</span></div><div class="health-meta">PID ${service.pid || '—'} · Restart ${service.restarts}x</div></div>`;
           }).join('');
           const r = data.resources;
-          healthMetrics.innerHTML = metric('RAM available / total', `${r.memory.available_mb} / ${r.memory.total_mb} MB Ã‚Â· ${r.memory.percent}% used`, r.memory.percent) + metric('Disk free / total', `${formatBytes(r.disk.free_bytes)} / ${formatBytes(r.disk.total_bytes)}`);
+          healthMetrics.innerHTML = metric('RAM available / total', `${r.memory.available_mb} / ${r.memory.total_mb} MB · ${r.memory.percent}% used`, r.memory.percent) + metric('Disk free / total', `${formatBytes(r.disk.free_bytes)} / ${formatBytes(r.disk.total_bytes)}`);
           healthUpdatedAt.textContent = `Diperbarui ${new Date(data.timestamp).toLocaleTimeString()}`;
         } catch (err) {
           healthUpdatedAt.textContent = `Health gagal dimuat: ${err.message}`;
@@ -422,7 +422,7 @@
       setInterval(refreshHealth, 10000);
     };
   </script>
-  <script src="/assets/ui-enhancements.js?v=9"></script>
+  <script src="/assets/ui-enhancements.js?v=30"></script>
 </main>
 </div>
 </body>
