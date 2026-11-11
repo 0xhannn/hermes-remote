@@ -410,13 +410,6 @@
       <p class="subtitle">Inspeksi, audit, edit, dan hapus modul procedural knowledge yang digunakan oleh Fairy Agent.</p>
     </header>
 
-    <div id="authBox">
-      <div style="font-size: 36px; margin-bottom: 8px;">🔐</div>
-      <h2 style="font-size: 18px; font-weight: 700;">Autentikasi Master</h2>
-      <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Masukkan Master PIN untuk mengakses audit skills.</p>
-      <input type="password" id="pinInput" class="auth-input" placeholder="masukkan Master PIN" onkeypress="if(event.key === 'Enter') handleAuth()">
-      <button class="btn" style="width: 100%; justify-content: center;" onclick="handleAuth()">Buka Akses</button>
-    </div>
 
     <div id="dashboardView" style="display: none;">
       <div class="controls-row">
@@ -472,8 +465,8 @@
     </div>
   </div>
 
-  <script>
-    let AUTH_PIN = localStorage.getItem('hermes_pin') || '';
+  <script src="/assets/auth-guard.js"></script>
+  <script>let AUTH_PIN = localStorage.getItem('hermes_pin') || '';
     let ALL_SKILLS = [];
     let IS_NEW_SKILL = false;
     let skillModalHistoryOpen = false;
@@ -559,31 +552,9 @@
       setTimeout(() => { t.style.display = 'none'; }, 3000);
     }
 
-    async function handleAuth() {
-      const pin = document.getElementById('pinInput').value.trim();
-      if (!pin) return showNotice('PIN tidak boleh kosong');
-      try {
-        const res = await fetch('/api/hermes/auth', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin })
-        });
-        const data = await res.json();
-        if (data.success) {
-          AUTH_PIN = pin;
-          localStorage.setItem('hermes_pin', pin);
-          initDashboard();
-        } else {
-          showNotice('PIN salah!');
-        }
-      } catch (e) {
-        showNotice('Gagal terhubung ke server');
-      }
-    }
 
     async function initDashboard() {
-      document.getElementById('authBox').style.display = 'none';
-      document.getElementById('dashboardView').style.display = 'block';
+            document.getElementById('dashboardView').style.display = 'block';
       await loadSkills();
     }
 
@@ -745,16 +716,9 @@
 
     // Auto auth if PIN exists
     window.onload = async () => {
-      if (AUTH_PIN) {
-        initDashboard();
-      } else {
-        const ok = await hermesGuard();
-        if (ok) initDashboard();
-      }
-    };
-  </script>
+      if (await hermesGuard('/skills/')) initDashboard();
+    };</script>
 
-  <script src="/assets/auth-guard.js"></script>
   <script src="/assets/ui-enhancements.js?v=2"></script>
 </main>
 </div>

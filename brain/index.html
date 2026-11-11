@@ -279,13 +279,6 @@
       <p class="subtitle">Panel kendali model aktif dan manajemen custom provider runtime Hermes.</p>
     </header>
 
-    <div id="authBox">
-      <div style="font-size: 36px; margin-bottom: 8px;">🔐</div>
-      <h2 style="font-size: 18px; font-weight: 700;">Autentikasi Master</h2>
-      <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Masukkan Master PIN untuk mengakses panel kendali.</p>
-      <input type="password" id="pinInput" class="auth-input" placeholder="masukkan Master PIN" onkeypress="if(event.key === 'Enter') handleAuth()">
-      <button class="btn" style="width: 100%; justify-content: center;" onclick="handleAuth()">Buka Akses</button>
-    </div>
 
     <div id="dashboardView">
       <div class="hero-grid">
@@ -378,8 +371,8 @@
 
   <div id="toast" class="toast"></div>
 
-  <script>
-    let MASTER_PIN = localStorage.getItem('hermes_pin') || '';
+  <script src="/assets/auth-guard.js"></script>
+  <script>let MASTER_PIN = localStorage.getItem('hermes_pin') || '';
     let APP_STATE = null;
 
     function showToast(msg) {
@@ -402,36 +395,12 @@
       return res.json();
     }
 
-    async function handleAuth() {
-      const pin = document.getElementById('pinInput').value.trim();
-      if (!pin) return showNotice('Masukkan PIN');
-
-      try {
-        const res = await fetch('/api/hermes/auth', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({pin})
-        });
-        const data = await res.json();
-        if (data.success) {
-          MASTER_PIN = pin;
-          localStorage.setItem('hermes_pin', pin);
-          document.getElementById('authBox').style.display = 'none';
-          document.getElementById('dashboardView').style.display = 'block';
-          loadDashboard();
-        } else {
-          showNotice('PIN salah: ' + (data.error || 'Akses ditolak'));
-        }
-      } catch (e) {
-        showNotice('Gagal panggil API: ' + e.message);
-      }
-    }
 
     function logout() {
       MASTER_PIN = '';
       localStorage.removeItem('hermes_pin');
       fetch('/api/hermes/auth/logout', { method: 'POST', credentials: 'same-origin' }).finally(() => {
-        window.location.href = '/auth/?next=' + encodeURIComponent(window.location.pathname);
+        window.location.href = '/hermes/auth/?next=' + encodeURIComponent(window.location.pathname);
       });
     }
 
@@ -727,25 +696,15 @@
       }
     }
 
-    if (MASTER_PIN) {
-      document.getElementById('authBox').style.display = 'none';
+    (async () => {
+      if (!(await hermesGuard('/brain/'))) return;
       document.getElementById('dashboardView').style.display = 'block';
       loadDashboard();
-    } else {
-      (async () => {
-        if (await hermesGuard()) {
-          document.getElementById('authBox').style.display = 'none';
-          document.getElementById('dashboardView').style.display = 'block';
-          loadDashboard();
-        }
-      })();
-    }
-  </script>
+    })();</script>
     <footer>
       localhost:8093 &bull; Hermes Control Center &bull; Agent Gateway
     </footer>
 
-  <script src="/assets/auth-guard.js"></script>
   <script src="/assets/ui-enhancements.js?v=2"></script>
 </main>
 </div>

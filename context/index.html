@@ -666,8 +666,8 @@
 
   <div class="toast" id="toast-msg">Notifikasi</div>
 
-  <script>
-    let MEMORY_RAW = [];
+  <script src="/assets/auth-guard.js"></script>
+  <script>let MEMORY_RAW = [];
     let USER_RAW = [];
     let currentTab = 'memory';
     let pendingDeleteTarget = null;
@@ -751,10 +751,6 @@
     }
 
     async function loadData() {
-      if (!authKey) {
-        window.location.href = '/auth/?next=' + encodeURIComponent(window.location.pathname);
-        return;
-      }
       try {
         const res = await fetch('/api/memory/data', {
           headers: { 'X-Hermes-PIN': authKey }
@@ -763,7 +759,7 @@
           localStorage.removeItem('hermes_pin');
           sessionStorage.removeItem('memoryAuthKey');
           authKey = '';
-          window.location.href = '/auth/?next=' + encodeURIComponent(window.location.pathname);
+          window.location.href = '/hermes/auth/?next=' + encodeURIComponent(window.location.pathname);
           return;
         }
         const data = await res.json();
@@ -973,11 +969,9 @@
       }
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      loadData();
-    });
-  </script>
-  <script src="/assets/auth-guard.js"></script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (await hermesGuard('/context/')) loadData();
+    });</script>
   <script>
     (async () => { await hermesGuard(); })();
   </script>
