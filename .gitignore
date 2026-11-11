@@ -1,7 +1,13 @@
-# Runtime / log / helper lokal (tidak untuk rilis)
+# Python
+__pycache__/
+*.pyc
+
+# Runtime / log / helper lokal
 server/*.log
 server/srv_out.txt
 server/wmic_out.txt
 server/*.bat
+server/_sk.py
+server/launch_notion_8096.py
 *.log
 *.txt
