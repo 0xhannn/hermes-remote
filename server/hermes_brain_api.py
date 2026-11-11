@@ -418,6 +418,27 @@ def _notion_fetch_children(token, block_id):
     st, res = _notion_api(token, "GET", "blocks/" + block_id + "/children?page_size=100")
     return res.get("results", []) if st == 200 else []
 
+def _rich_md(seg):
+    out = []
+    for s in (seg or []):
+        t = s.get("plain_text", "")
+        if not t:
+            continue
+        a = s.get("annotations", {})
+        if a.get("bold"):
+            t = "**" + t + "**"
+        if a.get("italic"):
+            t = "*" + t + "*"
+        if a.get("code"):
+            t = "`" + t + "`"
+        if a.get("strikethrough"):
+            t = "~~" + t + "~~"
+        url = s.get("href")
+        if url:
+            t = "[%s](%s)" % (t, url)
+        out.append(t)
+    return "".join(out)
+
 def _notion_blocks_to_md(token, blocks, depth=0):
     if depth > 4 or not blocks:
         return ""
@@ -427,7 +448,7 @@ def _notion_blocks_to_md(token, blocks, depth=0):
     for b in blocks:
         t = b.get("type")
         bl = b.get(t, {}) or {}
-        rich = "".join(x.get("plain_text", "") for x in bl.get("rich_text", []))
+        rich = _rich_md(bl.get("rich_text", []))
         head = ""
         if t == "heading_1":
             head = "# "
@@ -442,12 +463,27 @@ def _notion_blocks_to_md(token, blocks, depth=0):
             head = "%d. " % n
         elif t == "to_do":
             head = "- [x] " if bl.get("checked") else "- [ ] "
-        elif t in ("quote", "callout"):
+        elif t == "quote":
             head = "> "
+        elif t == "callout":
+            icon = ""
+            ic = bl.get("icon")
+            if isinstance(ic, dict) and ic.get("type") == "emoji":
+                icon = ic.get("emoji") or ""
+            lines.append("%s:::callout%s" % (indent, (" " + icon) if icon else ""))
+            if rich.strip():
+                lines.append(indent + "  " + rich)
+            if bl.get("has_children"):
+                kids = _notion_fetch_children(token, b.get("id"))
+                inner = _notion_blocks_to_md(token, kids, depth + 1)
+                if inner.strip():
+                    lines.append(inner)
+            lines.append(indent + ":::")
+            continue
         elif t == "code":
             lang = bl.get("language", "")
             lines.append(indent + "```" + lang)
-            lines.append(indent + rich)
+            lines.append(indent + "".join(x.get("plain_text", "") for x in bl.get("rich_text", [])))
             lines.append(indent + "```")
             continue
         elif t == "divider":
@@ -475,9 +511,7 @@ def _notion_blocks_to_md(token, blocks, depth=0):
                 for row in kids:
                     if row.get("type") == "table_row":
                         cells = row.get("table_row", {}).get("cells", [])
-                        rendered = []
-                        for cell in cells:
-                            rendered.append("".join(x.get("plain_text", "") for x in cell))
+                        rendered = [_rich_md(c) for c in cells]
                         lines.append(indent + "| " + " | ".join(rendered) + " |")
             continue
         elif t == "breadcrumb":
@@ -490,7 +524,16 @@ def _notion_blocks_to_md(token, blocks, depth=0):
                     lines.append(inner)
             continue
         elif t == "toggle":
-            head = "▸ "
+            lines.append(indent + ":::toggle")
+            if rich.strip():
+                lines.append(indent + "  " + rich)
+            if bl.get("has_children"):
+                kids = _notion_fetch_children(token, b.get("id"))
+                inner = _notion_blocks_to_md(token, kids, depth + 1)
+                if inner.strip():
+                    lines.append(inner)
+            lines.append(indent + ":::")
+            continue
         if head or rich.strip():
             lines.append(indent + head + rich)
         if bl.get("has_children"):
@@ -499,7 +542,93 @@ def _notion_blocks_to_md(token, blocks, depth=0):
             if inner.strip():
                 lines.append(inner)
     return "\n".join(lines)
+def _notion_icon(token, page_id):
+    st, page = _notion_api(token, "GET", "pages/" + page_id)
+    if st != 200:
+        return ""
+    ic = page.get("icon")
+    if isinstance(ic, dict):
+        if ic.get("type") == "emoji":
+            return ic.get("emoji") or ""
+        if ic.get("type") == "file" and isinstance(ic.get("file"), dict):
+            return ic["file"].get("url") or ""
+        if ic.get("type") == "external" and isinstance(ic.get("external"), dict):
+            return ic["external"].get("url") or ""
+    return ""
+
+def _rich_node(seg):
+
+    nodes = []
+    for s in (seg or []):
+        t = s.get("plain_text", "")
+        if not t:
+            continue
+        a = s.get("annotations", {})
+        nodes.append({
+            "t": t,
+            "b": bool(a.get("bold")),
+            "i": bool(a.get("italic")),
+            "c": bool(a.get("code")),
+            "s": bool(a.get("strikethrough")),
+            "u": bool(a.get("underline")),
+            "color": a.get("color"),
+            "href": s.get("href"),
+        })
+    return nodes
+
+def _notion_tree(token, block_id, depth=0, seen=None):
+    if depth > 6:
+        return []
+    seen = seen or set()
+    key = (block_id, depth)
+    if key in seen:
+        return []
+    seen.add(key)
+    st, res = _notion_api(token, "GET", "blocks/" + block_id + "/children?page_size=100")
+    results = res.get("results", []) if st == 200 and isinstance(res, dict) else []
+    out = []
+    for b in results:
+        t = b.get("type")
+        bl = b.get(t, {}) or {}
+        node = {"type": t}
+        if t == "table_row":
+            node["cells"] = [[_rich_node(cell) for cell in bl.get("cells", [])]]
+        elif t in ("paragraph", "heading_1", "heading_2", "heading_3",
+                   "bulleted_list_item", "numbered_list_item", "toggle",
+                   "quote"):
+            node["rt"] = _rich_node(bl.get("rich_text"))
+        elif t == "to_do":
+            node["rt"] = _rich_node(bl.get("rich_text"))
+            node["checked"] = bool(bl.get("checked"))
+        elif t == "callout":
+            node["rt"] = _rich_node(bl.get("rich_text"))
+            ic = bl.get("icon")
+            node["icon"] = ic.get("emoji") if isinstance(ic, dict) and ic.get("type") == "emoji" else ""
+        elif t == "code":
+            node["rt"] = _rich_node(bl.get("rich_text"))
+            node["lang"] = bl.get("language")
+        elif t == "child_page":
+            node["id"] = b.get("id")
+            node["title"] = bl.get("title") or "(subpage)"
+            node["icon"] = _notion_icon(token, b.get("id"))
+        elif t in ("bookmark", "link_preview"):
+            node["url"] = bl.get("url")
+            node["rt"] = _rich_node(bl.get("rich_text"))
+            ic = bl.get("icon")
+            node["icon"] = ic.get("emoji") if isinstance(ic, dict) and ic.get("type") == "emoji" else ""
+        elif t in ("image", "embed", "video", "pdf", "file", "audio"):
+            node["url"] = (bl.get("file") or {}).get("url") or (bl.get("external") or {}).get("url") or bl.get("url")
+            node["caption"] = "".join(x.get("plain_text", "") for x in bl.get("caption", []))
+        elif t == "equation":
+            node["expr"] = bl.get("expression")
+        has_kids = b.get("has_children")
+        if has_kids or t in ("table", "column_list", "column", "synced_block"):
+            node["children"] = _notion_tree(token, b.get("id"), depth + 1, seen)
+        out.append(node)
+    return out
+
 def _notion_props_to_md(props):
+
     lines = []
     order = []
     for k, v in (props or {}).items():
@@ -954,6 +1083,37 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
                 if b_md.strip():
                     md = md + "\n" + b_md
             return self._send_json(200, {"success": True, "markdown": md})
+
+        if path == "/api/hermes/notion/page_blocks":
+            cfg = _notion_load()
+            if not cfg.get("token"):
+                return self._send_json(400, {"success": False, "error": "Notion belum dikonfigurasi"})
+            pid = urllib.parse.parse_qs(parsed.query).get("id", [""])[0]
+            if not pid:
+                return self._send_json(400, {"success": False, "error": "parameter id wajib diisi"})
+            st, page = _notion_api(cfg["token"], "GET", "pages/" + pid)
+            if st != 200:
+                return self._send_json(st, {"success": False, "error": page.get("message")})
+            title = ""
+            props = page.get("properties", {})
+            for k, v in props.items():
+                if isinstance(v, dict) and v.get("type") == "title":
+                    title = "".join(x.get("plain_text", "") for x in v.get("title", []))
+                    break
+            icon = ""
+            ic = page.get("icon")
+            if isinstance(ic, dict) and ic.get("type") == "emoji":
+                icon = ic.get("emoji") or ""
+            cover_url = ""
+            cv = page.get("cover")
+            if isinstance(cv, dict):
+                if cv.get("type") == "external" and isinstance(cv.get("external"), dict):
+                    cover_url = cv["external"].get("url") or ""
+                elif cv.get("type") == "file" and isinstance(cv.get("file"), dict):
+                    cover_url = cv["file"].get("url") or ""
+            tree = _notion_tree(cfg["token"], pid)
+            return self._send_json(200, {"success": True, "title": title, "icon": icon,
+                                         "cover": cover_url, "blocks": tree})
 
         if path == "/api/hermes/notion/search":
             cfg = _notion_load()

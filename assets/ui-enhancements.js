@@ -69,4 +69,13 @@
       }
     }
   }, true);
+
+  // Integrasi nav-group toggle
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.nav-group-btn');
+    if (!btn) return;
+    const g = btn.closest('.nav-group');
+    const open = g.classList.toggle('open');
+    btn.setAttribute('aria-expanded', String(open));
+  }, true);
 })();

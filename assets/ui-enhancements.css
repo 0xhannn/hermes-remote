@@ -242,3 +242,14 @@ body { margin: 0; padding: 0 !important; }
   .main-content { padding: 16px 16px 48px; }
 }
 .sidebar-toggle { display: none !important; }
+
+/* --- Integrasi nav-group (collapsible dropdown) --- */
+.nav-group{display:flex;flex-direction:column;gap:2px}
+.nav-group-btn{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 12px;border:none;background:none;color:#1C1917;font-weight:500;font-size:14px;font-family:inherit;cursor:pointer;border-radius:8px;text-align:left;width:100%}
+.nav-group-btn:hover{background:#F5F0E6}
+.nav-group-btn svg{stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:0 0 18px;width:18px;height:18px}
+.nav-group-btn .caret{margin-left:auto;width:16px;height:16px;transition:transform .15s}
+.nav-group.open .caret{transform:rotate(90deg)}
+.nav-group-body{display:none;flex-direction:column;gap:2px;padding-left:10px;margin-left:19px;border-left:1px solid #E8E2D9}
+.nav-group.open .nav-group-body{display:flex}
+.nav-link.nav-sub{min-height:38px;font-size:14px}
