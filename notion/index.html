@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Notion — Hermes Remote</title>
+  <title>Hermes Remote</title>
   <link rel="stylesheet" href="/assets/ui-enhancements.css?v=10">
   <link rel="icon" type="image/svg+xml" href="/assets/hermes-icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,11 +24,23 @@
     html,body,*{scrollbar-width:none;-ms-overflow-style:none}
     *::-webkit-scrollbar{display:none}
     body{background:var(--bg-page);color:var(--text-main);font-family:var(--font-sans);min-height:100vh}
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity .18s}
+    .modal-backdrop.open{opacity:1;pointer-events:auto}
+    .modal{background:var(--bg-card);border:1px solid var(--card-border);border-radius:14px;padding:24px;width:min(400px,90vw);box-shadow:0 16px 48px rgba(0,0,0,.18)}
+    .modal h3{margin:0 0 8px;font-size:17px}
+    .modal p{margin:0 0 20px;color:var(--text-muted);font-size:13px;line-height:1.5}
+    .modal-actions{display:flex;gap:10px;justify-content:flex-end}
+    .btn{background:var(--accent);color:#fff;border:0;padding:8px 16px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit}
+    .btn-ghost{background:transparent;color:var(--text-muted);border:1px solid var(--card-border)}
+    .btn-danger{background:var(--danger-red)}
     .hide{display:none!important}
     .container{width:100%;max-width:100%}
     header{display:block;margin-bottom:32px}
     .brand-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap}
     .status-pill{background:var(--bg-card);border:1px solid var(--card-border);padding:6px 12px;border-radius:999px;font-size:12px;font-weight:600;font-family:var(--font-mono);display:inline-flex;align-items:center;gap:6px}
+    .status-pill i{width:8px;height:8px;border-radius:50%;background:#10B981;display:block}
+    .status-pill.off i{background:var(--danger-red)}
+    .status-pill.off{color:var(--danger-red)}
     .status-dot{width:8px;height:8px;background-color:#10B981;border-radius:50%}
     h1{font-size:28px;font-weight:800;letter-spacing:-0.5px;color:var(--text-main);margin-top:6px}
     .subtitle{color:var(--text-muted);font-size:14px;margin-top:4px}
@@ -155,10 +167,14 @@
     <main class="main-content">
       <div class="container">
         <header>
-          <div class="brand-row"><div class="page-mark"></div><div class="status-pill"><span class="status-dot"></span> Notion</div></div>
+          <div class="brand-row"><div class="page-mark"></div></div>
           <h1>Notion</h1>
-          <p class="subtitle">Halaman Aturan dan sub-halaman — render 1:1 dari API Notion. <span class="badge off" id="statusBadge">nonaktif</span></p>
+          <p class="subtitle">Halaman Aturan dan sub-halaman — render 1:1 dari API Notion.</p>
         </header>
+
+        <div class="row" style="margin-bottom:16px">
+          <span class="status-pill" id="statusBadge"><i></i><span id="statusBadgeLabel">nonaktif</span></span>
+        </div>
 
         <div class="card hide" id="configCard">
           <div class="card-title">
@@ -217,8 +233,8 @@
       }
       if (r.status !== 200) return showMsg('cfgMsg', r.data.error || 'Gagal muat status', false);
       cfg = r.data;
-      $('statusBadge').textContent = cfg.configured ? 'aktif' : 'nonaktif';
-      $('statusBadge').className = 'badge ' + (cfg.configured ? 'on' : 'off');
+      $('statusBadgeLabel').textContent = cfg.configured ? 'aktif' : 'nonaktif';
+      $('statusBadge').className = 'status-pill ' + (cfg.configured ? 'on' : 'off');
       $('configCard').classList.toggle('hide', cfg.configured);
       $('pagesCard').classList.toggle('hide', !cfg.configured);
       if (cfg.configured) await loadPages();
@@ -401,17 +417,34 @@
     function closePage(){ $('pageCard').classList.add('hide'); $('pagesCard').classList.remove('hide'); }
 
     async function detach(){
-      if (!confirm('Lepas integrasi Notion? Semua halaman & sub-halaman akan hilang dari daftar. Token lama tetap aman di Notion.')) return;
+      const ok = await showConfirm('Lepas integrasi Notion?', 'Semua halaman & sub-halaman akan hilang dari daftar. Token lama tetap aman di Notion.');
+      if (!ok) return;
       const r = await api('/api/hermes/notion/config', {method:'POST', body: JSON.stringify({action:'clear'})});
       if (r.status === 401){ localStorage.removeItem('hermes_pin'); pin=''; window.location.href='/hermes/auth/?next='+encodeURIComponent('/notion/'); return; }
       if (!r.data.success) return alert(r.data.error || 'Gagal melepas');
       $('pageCard').classList.add('hide');
       $('pagesList').innerHTML = '';
-      $('statusBadge').textContent = 'nonaktif';
-      $('statusBadge').className = 'badge off';
+      $('statusBadgeLabel').textContent = 'nonaktif';
+      $('statusBadge').className = 'status-pill off';
       $('configCard').classList.remove('hide');
       $('pagesCard').classList.add('hide');
       $('tokenInput').value = '';
+    }
+
+    function showConfirm(title, msg){
+      $('confirmTitle').textContent = title;
+      $('confirmMsg').textContent = msg;
+      const bd = $('confirmBackdrop');
+      bd.classList.add('open');
+      return new Promise(resolve => {
+        const done = val => { bd.classList.remove('open'); $('confirmOk').removeEventListener('click', onOk); $('confirmCancel').removeEventListener('click', onCancel); bd.removeEventListener('click', onBd); resolve(val); };
+        const onOk = () => done(true);
+        const onCancel = () => done(false);
+        const onBd = e => { if (e.target === bd) done(false); };
+        $('confirmOk').addEventListener('click', onOk);
+        $('confirmCancel').addEventListener('click', onCancel);
+        bd.addEventListener('click', onBd);
+      });
     }
 
     $('pageCard').addEventListener('click', e=>{
@@ -427,5 +460,15 @@
       await loadCfg();
     })();
   </script>
+  <div class="modal-backdrop" id="confirmBackdrop">
+    <div class="modal" role="dialog" aria-modal="true">
+      <h3 id="confirmTitle">Lepas integrasi Notion?</h3>
+      <p id="confirmMsg">Semua halaman &amp; sub-halaman akan hilang dari daftar. Token lama tetap aman di Notion.</p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="confirmCancel">Batal</button>
+        <button class="btn btn-danger" id="confirmOk">Lepas</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
