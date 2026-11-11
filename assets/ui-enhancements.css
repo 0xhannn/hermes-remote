@@ -255,6 +255,11 @@ body { margin: 0; padding: 0 !important; }
 .nav-group-btn:hover { background: #F5F0E6; }
 .nav-group-btn[aria-expanded="true"] { background: #F5F0E6; }
 .nav-group-title { flex: 1; }
+.nav-group-icon {
+  width: 18px; height: 18px; flex: 0 0 18px;
+  stroke: currentColor; fill: none;
+  stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round;
+}
 .nav-group-caret {
   width: 16px; height: 16px; stroke: currentColor; fill: none;
   stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;

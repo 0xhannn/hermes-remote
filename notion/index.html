@@ -86,16 +86,6 @@
           <p class="sub">Halaman Aturan dan sub-halaman — render 1:1 dari API Notion. <span class="badge off" id="statusBadge">nonaktif</span></p>
         </header>
 
-        <div class="card" id="authCard">
-          <h2>Autentikasi Master</h2>
-          <p class="muted" style="font-size:13px;margin-bottom:12px">Masukkan Master PIN untuk mengakses Notion.</p>
-          <div class="row">
-            <input class="grow" type="password" id="pinInput" placeholder="Master PIN..." autocomplete="off" onkeypress="if(event.key==='Enter')handleAuth()">
-            <button class="btn" id="pinBtn" onclick="handleAuth()">Buka</button>
-          </div>
-          <div class="msg" id="authMsg"></div>
-        </div>
-
         <div class="card hide" id="configCard">
           <h2>Konfigurasi</h2>
           <p class="muted" style="font-size:13px;margin-bottom:12px">Masukkan token integrasi Notion. Token hanya tersimpan di server (file config), tidak pernah ditampilkan.</p>
@@ -139,34 +129,14 @@
       return {status: res.status, data};
     }
 
-    function guard(){
-      if (pin) return true;
-      $('authCard').classList.remove('hide');
-      return false;
-    }
-
     function showMsg(id, text, ok){ $(id).textContent = text; $(id).className = 'msg ' + (ok ? 'ok' : 'err'); }
 
-    async function handleAuth(){
-      const p = $('pinInput').value.trim();
-      if (!p) return showMsg('authMsg', 'PIN wajib diisi', false);
-      // validasi via endpoint config
-      const r = await api('/api/hermes/config', {method:'GET'});
-      if (r.status === 401){
-        localStorage.removeItem('hermes_pin'); pin = '';
-        return showMsg('authMsg', 'PIN salah', false);
-      }
-      pin = p; localStorage.setItem('hermes_pin', pin);
-      $('authCard').classList.add('hide');
-      await loadCfg();
-    }
-
     async function loadCfg(){
-      if (!guard()) return;
       const r = await api('/api/hermes/notion/config');
       if (r.status === 401){
         localStorage.removeItem('hermes_pin'); pin = '';
-        $('authCard').classList.remove('hide'); return;
+        window.location.href = '/hermes/auth/?next=' + encodeURIComponent('/notion/');
+        return;
       }
       if (r.status !== 200) return showMsg('cfgMsg', r.data.error || 'Gagal muat status', false);
       cfg = r.data;
@@ -284,10 +254,9 @@
 
     // init
     (async function init(){
-      // auth guard via cookie (hermesGuard) — kalau belum auth, redirect
+      // auth guard via cookie (hermesGuard) — kalau belum auth, redirect ke /hermes/auth/
       const ok = await hermesGuard('/notion/');
       if (!ok) return;
-      if (pin){ $('authCard').classList.add('hide'); }
       await loadCfg();
     })();
   </script>

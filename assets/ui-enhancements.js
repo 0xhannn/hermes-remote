@@ -67,6 +67,7 @@
     group.className = 'nav-group';
     group.innerHTML =
       '<button type="button" class="nav-group-btn" aria-expanded="false">' +
+        '<svg viewBox="0 0 24 24" class="nav-group-icon" aria-hidden="true"><path d="M9 3H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"/><path d="M19 3h-4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"/><path d="M9 13H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2z"/><path d="M19 13h-4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2z"/></svg>' +
         '<span class="nav-group-title">Integrasi</span>' +
         '<svg viewBox="0 0 24 24" class="nav-group-caret" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>' +
       '</button>' +
