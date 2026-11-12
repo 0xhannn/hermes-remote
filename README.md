@@ -28,6 +28,15 @@ Hermes Agent hidup di mesin lokal. Mengutak-atik model, memori, dan skills lewat
 
 Tidak ada akun. Tidak ada data yang dikirim ke server kami. PIN hanya menjaga sesi di mesin itu.
 
+## Fitur utama
+
+- **Panel kontrol lokal** — status proses, RAM, disk, dan model/provider dalam satu halaman.
+- **Notion terintegrasi** — dropdown halaman, render 1:1 via API, tree navigasi, breadcrumb, dan modal. Lihat/baca halaman langsung dari panel.
+
+- **Mobile-first & responsif** — drawer off-canvas, header fixed full-width, toast responsif + keyboard. Enak di HP maupun desktop.
+- **Auth-once** — sekali masukkan PIN, sesi bertahan; tak perlu login ulang tiap buka.
+- **Bebas cloud** — semua data tetap di mesin lokal; PIN hanya menjaga sesi.
+
 ## Pasang
 
 Butuh Node.js 16+ dan Python 3.8+. Python cukup yang sudah ada di sistem.
@@ -53,6 +62,7 @@ npx github:0xhannn/hermes-config-remote
 | Brain | Lihat model aktif, ganti provider |
 | Context | Baca dan ubah `USER.md` serta `MEMORY.md` |
 | Skills | Lihat skill yang terpasang |
+| Notion | Pilih halaman Notion, baca/render konten 1:1 |
 | Settings | Ganti PIN, cadangan `tar.gz`, salin perintah update |
 
 ## Perintah
@@ -77,6 +87,12 @@ npm install -g hermes-remote@latest
 
 Halaman tidak menarik git dan tidak mematikan prosesnya sendiri.
 
+## Changelog
+
+**v1.0.21** — perbaikan paket npm: `notion/` & `cron/` kini ikut ter-publish (tab Notion tidak lagi 404).
+
+**v1.0.20** — overhaul mobile (drawer off-canvas, header fixed, toast responsif), integrasi tab Notion render 1:1 via API, mode auth-once, perbaikan mojibake & sinkronisasi konten Brain/Skills.
+
 ## Isi repo
 
 ```text
@@ -84,9 +100,33 @@ bin/cli.js                  menu, nyalakan server, tray
 server/hermes_brain_api.py  API lokal, port 8093
 index.html                  dashboard
 brain/  context/  skills/   halaman panel
+notion/                     halaman Notion (render via API)
 settings/  auth/            pengaturan dan pintu PIN
 assets/                     gaya, ikon, suara
 ```
+
+## Tangkapan layar
+
+**Desktop** (1280×800) — Dashboard, Brain, Context, Skills:
+
+| | |
+|---|---|
+| ![Dashboard](assets/screenshots/desktop_dashboard.png) | ![Brain](assets/screenshots/desktop_brain.png) |
+| ![Context](assets/screenshots/desktop_context.png) | ![Skills](assets/screenshots/desktop_skills.png) |
+
+Desktop — Logs, Settings, dan integrasi Notion:
+
+| | |
+|---|---|
+| ![Logs](assets/screenshots/desktop_logs.png) | ![Settings](assets/screenshots/desktop_settings.png) |
+| ![Notion](assets/screenshots/desktop_notion.png) | |
+
+**Mobile** (390×844):
+
+| | |
+|---|---|
+| ![Dashboard](assets/screenshots/mobile_dashboard.png) | ![Brain](assets/screenshots/mobile_brain.png) |
+| ![Notion](assets/screenshots/mobile_notion.png) | |
 
 ## Lisensi
 
