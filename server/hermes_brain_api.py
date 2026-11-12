@@ -990,11 +990,49 @@ def _host_paths():
                 paths.append(p)
     return paths
 
+def _dotenv_map():
+    """Gabungkan os.environ + key dari file .env umum di home & apps (tanpa ekspos nilai)."""
+    env = {k: v for k, v in os.environ.items()}
+    cands = []
+    for base in _host_paths():
+        cands += [
+            os.path.join(base, ".env"),
+            os.path.join(base, ".hermes", ".env"),
+            os.path.join(base, ".design-gallery.env"),
+        ]
+    for base in _host_paths():
+        appsdir = os.path.join(base, "apps")
+        if os.path.isdir(appsdir):
+            try:
+                for fn in os.listdir(appsdir):
+                    p = os.path.join(appsdir, fn, ".env")
+                    if os.path.isfile(p): cands.append(p)
+                    p2 = os.path.join(appsdir, fn) + ".env"
+                    if os.path.isfile(p2): cands.append(p2)
+            except Exception:
+                pass
+    for p in cands:
+        if not os.path.isfile(p): continue
+        try:
+            with open(p, "r", encoding="utf-8", errors="replace") as f:
+                for ln in f:
+                    ln = ln.strip()
+                    if not ln or ln.startswith("#") or "=" not in ln: continue
+                    k, _, v = ln.partition("=")
+                    k = k.strip(); v = v.strip().strip('"').strip("'")
+                    if k and v and k not in env:
+                        env[k] = v
+        except Exception:
+            pass
+    return env
+
+
 def scan_tools():
     """Deteksi credential/auth tool yang terpasang pada host (lintas platform).
     Hanya status + sumber + nilai termask — tidak pernah ekspos token mentah."""
     result = []
     hosts = _host_paths()
+    envmap = _dotenv_map()
 
     # ---- GitHub (gh CLI / env) ----
     gh_status = "missing"; gh_src = ""; gh_cred = None
@@ -1301,8 +1339,8 @@ def scan_tools():
     for tid, tname, envkeys, mcpnames, mcpkeys in _ENV_TOOLS:
         st, src, cred = "missing", "", None
         for ek in envkeys:
-            if os.environ.get(ek):
-                st, src, cred = "configured", "env " + ek, _mask_secret(os.environ[ek])
+            if envmap.get(ek):
+                st, src, cred = "configured", "env " + ek, _mask_secret(envmap[ek])
                 break
         if not cred and mcpnames:
             for mn in mcpnames:
@@ -1313,6 +1351,15 @@ def scan_tools():
                             st, src, cred = "configured", "config.yaml mcp_servers." + mn + ".env", _mask_secret(em[mk])
                             break
                     if cred: break
+                    # mcp config pakai headers Authorization (mis. box)
+                    if not cred:
+                        hdrs = mcp[mn].get("headers", {}) if isinstance(mcp[mn].get("headers"), dict) else {}
+                        authz = hdrs.get("Authorization") or hdrs.get("authorization")
+                        if authz and "Bearer" in str(authz):
+                            tok = str(authz).split("Bearer", 1)[1].strip()
+                            if tok:
+                                st, src, cred = "configured", "config.yaml mcp_servers." + mn + ".headers", _mask_secret(tok)
+                                break
         if st == "missing":
             st = "not_detected"
         result.append({"id": tid, "name": tname, "status": st,
