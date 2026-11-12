@@ -49,17 +49,7 @@
     }
     header { margin-bottom: 24px; }
     .brand-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
-    .logo-badge {
-      background: var(--blue-dev);
-      color: #FFFFFF;
-      padding: 6px 12px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-      font-family: 'JetBrains Mono', monospace;
-    }
+
     .status-pill {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
@@ -257,8 +247,11 @@
   <div class="container">
     <header>
       <div class="brand-row">
-        <span class="logo-badge">Hermes Remote</span>
-        <span class="status-pill"><i class="status-dot"></i>Live</span>
+        <div class="page-mark">
+          <img src="/assets/hermes-icon.svg" alt="" width="28" height="28">
+          <span class="brand-copy"><strong>Hermes Remote</strong><small>By PH Labs</small></span>
+        </div>
+        <span class="status-pill"><span class="status-dot"></span> LIVE</span>
       </div>
       <h1>Tool</h1>
       <p class="subtitle">Pindai &amp; deteksi otomatis tool yang terpasang beserta status auth-nya.</p>
