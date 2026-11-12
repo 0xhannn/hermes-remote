@@ -972,17 +972,22 @@ def _mask_secret(value):
     return s[:4] + "…" + s[-4:]
 
 def _host_paths():
-    """Kembalikan daftar home paths (WSL + Windows mount) utk pencarian credential."""
-    paths = [os.path.expanduser("~")]
+    """Kembalikan daftar home paths (platform-agnostik: Windows native + WSL mount)."""
+    paths = []
+    home0 = os.path.expanduser("~")
+    if home0 and os.path.isdir(home0):
+        paths.append(home0)
+        for sub in (("AppData", "Roaming"), ("AppData", "Local")):
+            p = os.path.join(home0, *sub)
+            if os.path.isdir(p):
+                paths.append(p)
     win = "/mnt/c/Users/Parhan"
     if os.path.isdir(win):
         paths.append(win)
-    roam = "/mnt/c/Users/Parhan/AppData/Roaming"
-    if os.path.isdir(roam):
-        paths.append(roam)
-    local = "/mnt/c/Users/Parhan/AppData/Local"
-    if os.path.isdir(local):
-        paths.append(local)
+        for sub in (("AppData", "Roaming"), ("AppData", "Local")):
+            p = os.path.join(win, *sub)
+            if os.path.isdir(p):
+                paths.append(p)
     return paths
 
 def scan_tools():
