@@ -1196,6 +1196,15 @@ def scan_tools():
         ("sendgrid", "SendGrid", ["SENDGRID_API_KEY"], [], []),
         ("box_mcp", "Box (MCP)", [], ["box"], ["BOX_ACCESS_TOKEN", "BOX_JWT"]),
         ("googledrive", "Google Drive", ["GOOGLE_DRIVE_REFRESH_TOKEN"], [], []),
+        ("tailscale", "Tailscale", ["TS_AUTHKEY", "TAILSCALE_API_KEY"], [], []),
+        ("okx", "OKX Onchain OS", ["OKX_API_KEY", "OKX_SECRET_KEY", "OKX_PASSPHRASE"], [], []),
+        ("baw", "Binance Agentic Wallet", ["BAW_TOKEN", "BAW_API_KEY", "BINANCE_AGENTIC_TOKEN"], [], []),
+        ("neon", "Neon Postgres", ["NEON_API_KEY", "NEON_DATABASE_URL"], [], []),
+        ("whatsapp", "WhatsApp Gateway", ["WHATSAPP_ACCESS_TOKEN", "BAILEYS_AUTH", "WHATSAPP_API_KEY"], [], []),
+        ("email", "Email SMTP/IMAP", ["SMTP_PASSWORD", "IMAP_PASSWORD", "ZOHO_TOKEN"], [], []),
+        ("instagram", "Instagram Graph API", ["IG_ACCESS_TOKEN", "INSTAGRAM_ACCESS_TOKEN"], [], []),
+        ("helius", "Helius Solana RPC", ["HELIUS_API_KEY"], [], []),
+        ("fishaudio", "Fish Audio TTS", ["FISH_API_KEY"], [], []),
     ]
     cfg = load_yaml()
     mcp = cfg.get("mcp_servers", {}) if isinstance(cfg, dict) else {}
