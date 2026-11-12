@@ -339,9 +339,7 @@
     }
     emptyState.style.display = 'none';
     const configured = tools.filter(t => t.status === 'configured');
-    const shown = configured.length;
-    const total = tools.length;
-    scanMeta.textContent = (scannedAt ? 'Pindai ' + scannedAt.replace('T', ' ').slice(0, 19) + ' UTC' : 'Pindai') + ' • ' + shown + ' dari ' + total + ' terpasang';
+    scanMeta.textContent = (scannedAt ? 'Pindai ' + scannedAt.replace('T', ' ').slice(0, 19) + ' UTC' : 'Pindai');
     if (!shown) {
       toolGrid.innerHTML = '<div class="empty-state" style="display:block"><span class="big"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></span>Belum ada tool terpasang.</div>';
       return;
