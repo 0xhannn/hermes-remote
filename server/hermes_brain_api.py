@@ -1163,6 +1163,48 @@ def scan_tools():
                    "source": npm_src, "credential": npm_cred,
                    "detected_at": datetime.utcnow().isoformat() + "Z"})
 
+    # ---- Tool populer / creds umum (env + config mcp) ----
+    _ENV_TOOLS = [
+        ("telegram", "Telegram Bot", ["TELEGRAM_TOKEN"], [], []),
+        ("openai", "OpenAI", ["OPENAI_API_KEY"], [], []),
+        ("anthropic", "Anthropic", ["ANTHROPIC_API_KEY", "CLAUDE_API_KEY"], [], []),
+        ("gemini", "Google Gemini", ["GEMINI_API_KEY", "GOOGLE_API_KEY"], [], []),
+        ("docker", "Docker", ["DOCKER_TOKEN", "DOCKER_HUB_USERNAME"], [], []),
+        ("aws", "AWS", ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"], [], []),
+        ("gcp", "Google Cloud", ["GOOGLE_APPLICATION_CREDENTIALS", "GCLOUD_PROJECT"], [], []),
+        ("supabase", "Supabase", ["SUPABASE_URL", "SUPABASE_ACCESS_TOKEN"], [], []),
+        ("slack", "Slack", ["SLACK_BOT_TOKEN"], [], []),
+        ("discord", "Discord", ["DISCORD_TOKEN"], [], []),
+        ("xtwitter", "X / Twitter", ["TWITTER_BEARER_TOKEN", "X_API_KEY"], [], []),
+        ("stripe", "Stripe", ["STRIPE_SECRET_KEY"], [], []),
+        ("twilio", "Twilio", ["TWILIO_AUTH_TOKEN"], [], []),
+        ("sendgrid", "SendGrid", ["SENDGRID_API_KEY"], [], []),
+        ("box_mcp", "Box (MCP)", [], ["box"], ["BOX_ACCESS_TOKEN", "BOX_JWT"]),
+        ("googledrive", "Google Drive", ["GOOGLE_DRIVE_REFRESH_TOKEN"], [], []),
+    ]
+    cfg = load_yaml()
+    mcp = cfg.get("mcp_servers", {}) if isinstance(cfg, dict) else {}
+    for tid, tname, envkeys, mcpnames, mcpkeys in _ENV_TOOLS:
+        st, src, cred = "missing", "", None
+        for ek in envkeys:
+            if os.environ.get(ek):
+                st, src, cred = "configured", "env " + ek, _mask_secret(os.environ[ek])
+                break
+        if not cred and mcpnames:
+            for mn in mcpnames:
+                if mcp.get(mn) and isinstance(mcp[mn], dict):
+                    em = mcp[mn].get("env", {}) if isinstance(mcp[mn].get("env"), dict) else {}
+                    for mk in mcpkeys:
+                        if em.get(mk):
+                            st, src, cred = "configured", "config.yaml mcp_servers." + mn + ".env", _mask_secret(em[mk])
+                            break
+                    if cred: break
+        if st == "missing":
+            st = "not_detected"
+        result.append({"id": tid, "name": tname, "status": st,
+                       "source": src, "credential": cred,
+                       "detected_at": datetime.utcnow().isoformat() + "Z"})
+
     return result
 
 
