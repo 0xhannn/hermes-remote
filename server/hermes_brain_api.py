@@ -961,6 +961,207 @@ def _notion_props_to_md(props):
     return "\n".join(lines)
 
 
+
+def _mask_secret(value):
+    """Mask secret: tampilkan max 4 karakter awal + '…' + 4 karakter akhir."""
+    if not value:
+        return ""
+    s = str(value).strip()
+    if len(s) <= 8:
+        return "••••"
+    return s[:4] + "…" + s[-4:]
+
+def _host_paths():
+    """Kembalikan daftar home paths (WSL + Windows mount) utk pencarian credential."""
+    paths = [os.path.expanduser("~")]
+    win = "/mnt/c/Users/Parhan"
+    if os.path.isdir(win):
+        paths.append(win)
+    roam = "/mnt/c/Users/Parhan/AppData/Roaming"
+    if os.path.isdir(roam):
+        paths.append(roam)
+    local = "/mnt/c/Users/Parhan/AppData/Local"
+    if os.path.isdir(local):
+        paths.append(local)
+    return paths
+
+def scan_tools():
+    """Deteksi credential/auth tool yang terpasang pada host (lintas platform).
+    Hanya status + sumber + nilai termask — tidak pernah ekspos token mentah."""
+    result = []
+    hosts = _host_paths()
+
+    # ---- GitHub (gh CLI / env) ----
+    gh_status = "missing"; gh_src = ""; gh_cred = None
+    gh_hosts = None
+    for base in hosts:
+        for cand in (os.path.join(base, ".config", "gh", "hosts.yml"),
+                     os.path.join(base, ".config", "gh", "hosts.yaml"),
+                     os.path.join(base, "GitHub CLI", "hosts.yml"),
+                     os.path.join(base, "GitHub CLI", "hosts.yaml")):
+            if os.path.isfile(cand):
+                gh_hosts = cand; break
+        if gh_hosts: break
+    if gh_hosts:
+        gh_src = gh_hosts
+        try:
+            with open(gh_hosts, "r", encoding="utf-8", errors="replace") as f:
+                content = f.read()
+            m = re.search(r"oauth_token:\s*(\S+)", content)
+            if m:
+                gh_cred = _mask_secret(m.group(1)); gh_status = "configured"
+        except Exception:
+            pass
+    gh_env = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    if not gh_cred and gh_env:
+        gh_status = "configured"; gh_src = "env GH_TOKEN/GITHUB_TOKEN"; gh_cred = _mask_secret(gh_env)
+    if gh_status == "missing": gh_status = "not_detected"
+    result.append({"id": "github", "name": "GitHub (gh CLI)", "status": gh_status,
+                   "source": gh_src, "credential": gh_cred,
+                   "detected_at": datetime.utcnow().isoformat() + "Z"})
+
+    # ---- Vercel ----
+    vc_status, vc_src, vc_cred = "missing", "", None
+    vc_cands = []
+    for base in hosts:
+        vc_cands += [
+            os.path.join(base, ".local", "share", "com.vercel.cli", "auth.json"),
+            os.path.join(base, ".vercel", "auth.json"),
+            os.path.join(base, ".vercel-zenifa-studio-token.txt"),
+            os.path.join(base, "com.vercel.cli", "auth.json"),
+        ]
+    for cand in vc_cands:
+        if os.path.isfile(cand):
+            vc_src = cand
+            try:
+                with open(cand, "r", encoding="utf-8", errors="replace") as f:
+                    raw = f.read()
+                m = re.search(r'"?token"?\s*:\s*"([^"]+)"', raw)
+                if m:
+                    vc_cred = _mask_secret(m.group(1)); vc_status = "configured"
+                elif cand.endswith("token.txt"):
+                    vc_cred = _mask_secret(raw.strip()); vc_status = "configured"
+            except Exception:
+                pass
+            if vc_status == "configured": break
+    vc_env = os.environ.get("VERCEL_TOKEN")
+    if not vc_cred and vc_env:
+        vc_status, vc_src, vc_cred = "configured", "env VERCEL_TOKEN", _mask_secret(vc_env)
+    if vc_status == "missing": vc_status = "not_detected"
+    result.append({"id": "vercel", "name": "Vercel", "status": vc_status,
+                   "source": vc_src, "credential": vc_cred,
+                   "detected_at": datetime.utcnow().isoformat() + "Z"})
+
+    # ---- Cloudflare ----
+    cf_status, cf_src, cf_cred = "missing", "", None
+    for base in hosts:
+        for cand in (os.path.join(base, "cloudflare-token.txt"),
+                     os.path.join(base, ".cloudflared", "cert.pem"),
+                     os.path.join(base, ".cloudflared", "creds")):
+            if os.path.isfile(cand):
+                cf_src = cand
+                try:
+                    with open(cand, "r", encoding="utf-8", errors="replace") as f:
+                        raw = f.read()
+                    if "CLOUDFLARE_API_TOKEN=" in raw:
+                        m = re.search(r"CLOUDFLARE_API_TOKEN=(\S+)", raw)
+                        if m:
+                            cf_cred = _mask_secret(m.group(1)); cf_status = "configured"
+                except Exception:
+                    pass
+                if cf_status == "configured": break
+        if cf_status == "configured": break
+    cf_env = os.environ.get("CLOUDFLARE_API_TOKEN") or os.environ.get("CF_API_TOKEN")
+    if not cf_cred and cf_env:
+        cf_status, cf_src, cf_cred = "configured", "env CLOUDFLARE_API_TOKEN/CF_API_TOKEN", _mask_secret(cf_env)
+    if cf_status == "missing": cf_status = "not_detected"
+    result.append({"id": "cloudflare", "name": "Cloudflare", "status": cf_status,
+                   "source": cf_src, "credential": cf_cred,
+                   "detected_at": datetime.utcnow().isoformat() + "Z"})
+
+    # ---- Firecrawl (env + config mcp) ----
+    fc_status, fc_src, fc_cred = "missing", "", None
+    fc_env = os.environ.get("FIRECRAWL_API_KEY")
+    if fc_env:
+        fc_status, fc_src, fc_cred = "configured", "env FIRECRAWL_API_KEY", _mask_secret(fc_env)
+    else:
+        cfg = load_yaml()
+        mcp = cfg.get("mcp_servers", {})
+        if isinstance(mcp, dict) and "firecrawl" in mcp:
+            fc = mcp["firecrawl"]
+            if isinstance(fc, dict):
+                envmap = fc.get("env", {}) if isinstance(fc.get("env"), dict) else {}
+                key = envmap.get("FIRECRAWL_API_KEY")
+                if key:
+                    fc_status, fc_src, fc_cred = "configured", "config.yaml mcp_servers.firecrawl.env", _mask_secret(key)
+    if fc_status == "missing": fc_status = "not_detected"
+    result.append({"id": "firecrawl", "name": "Firecrawl", "status": fc_status,
+                   "source": fc_src, "credential": fc_cred,
+                   "detected_at": datetime.utcnow().isoformat() + "Z"})
+
+    # ---- Notion (config mcp) ----
+    nt_status, nt_src, nt_cred = "missing", "", None
+    cfg = load_yaml()
+    mcp = cfg.get("mcp_servers", {})
+    if isinstance(mcp, dict) and "notion" in mcp:
+        fc = mcp["notion"]
+        if isinstance(fc, dict):
+            envmap = fc.get("env", {}) if isinstance(fc.get("env"), dict) else {}
+            key = envmap.get("NOTION_TOKEN")
+            if key:
+                nt_status, nt_src, nt_cred = "configured", "config.yaml mcp_servers.notion.env", _mask_secret(key)
+    if nt_status == "missing": nt_status = "not_detected"
+    result.append({"id": "notion", "name": "Notion", "status": nt_status,
+                   "source": nt_src, "credential": nt_cred,
+                   "detected_at": datetime.utcnow().isoformat() + "Z"})
+
+    # ---- OpenRouter / 9router (config model/fallback) ----
+    or_status, or_src, or_cred = "missing", "", None
+    model_cfg = cfg.get("model", {})
+    or_key = model_cfg.get("api_key")
+    if or_key:
+        or_status, or_src, or_cred = "configured", "config.yaml model.api_key", _mask_secret(or_key)
+    else:
+        fb = model_cfg.get("fallback_providers", [])
+        if fb and isinstance(fb, list):
+            for p in fb:
+                if isinstance(p, dict) and p.get("api_key"):
+                    or_status, or_src, or_cred = "configured", "config.yaml fallback_providers", _mask_secret(p["api_key"])
+                    break
+    if or_status == "missing": or_status = "not_detected"
+    result.append({"id": "openrouter", "name": "OpenRouter / 9router", "status": or_status,
+                   "source": or_src, "credential": or_cred,
+                   "detected_at": datetime.utcnow().isoformat() + "Z"})
+
+    # ---- npm registry (.npmrc) ----
+    npm_status, npm_src, npm_cred = "missing", "", None
+    npmrc = None
+    for base in hosts:
+        c = os.path.join(base, ".npmrc")
+        if os.path.isfile(c): npmrc = c; break
+    if npmrc:
+        try:
+            with open(npmrc, "r", encoding="utf-8", errors="replace") as f:
+                raw = f.read()
+            if "_authToken" in raw:
+                m = re.search(r"_authToken\s*=\s*(\S+)", raw)
+                if m:
+                    npm_status, npm_src, npm_cred = "configured", npmrc, _mask_secret(m.group(1))
+            elif "//registry.npmjs.org/:_authToken" in raw:
+                m = re.search(r":_authToken\s*=\s*(\S+)", raw)
+                if m:
+                    npm_status, npm_src, npm_cred = "configured", npmrc, _mask_secret(m.group(1))
+        except Exception:
+            pass
+    if npm_status == "missing": npm_status = "not_detected"
+    result.append({"id": "npm", "name": "npm registry", "status": npm_status,
+                   "source": npm_src, "credential": npm_cred,
+                   "detected_at": datetime.utcnow().isoformat() + "Z"})
+
+    return result
+
+
+
 class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
 
     def _send_cors(self):
@@ -1151,6 +1352,13 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
 
         if path == "/api/hermes/system/health":
             return self._send_json(200, get_system_health())
+
+        if path == "/api/hermes/tools/scan":
+            try:
+                return self._send_json(200, {"success": True, "tools": scan_tools(),
+                                             "scanned_at": datetime.utcnow().isoformat() + "Z"})
+            except Exception as e:
+                return self._send_json(500, {"success": False, "error": "Scan gagal: " + str(e)})
 
         if path == "/api/hermes/logs":
             try:
