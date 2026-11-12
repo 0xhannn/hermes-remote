@@ -338,8 +338,15 @@
       return;
     }
     emptyState.style.display = 'none';
-    scanMeta.textContent = 'Pindai ' + (scannedAt ? 'pada ' + scannedAt.replace('T', ' ').slice(0, 19) + ' UTC' : '');
-    toolGrid.innerHTML = tools.map(t => {
+    const configured = tools.filter(t => t.status === 'configured');
+    const shown = configured.length;
+    const total = tools.length;
+    scanMeta.textContent = (scannedAt ? 'Pindai ' + scannedAt.replace('T', ' ').slice(0, 19) + ' UTC' : 'Pindai') + ' • ' + shown + ' dari ' + total + ' terpasang';
+    if (!shown) {
+      toolGrid.innerHTML = '<div class="empty-state" style="display:block"><span class="big"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></span>Belum ada tool terpasang.</div>';
+      return;
+    }
+    toolGrid.innerHTML = configured.map(t => {
       const badge = t.status === 'configured' ? 'configured' : (t.status === 'not_detected' ? 'not_detected' : 'missing');
       const badgeLabel = t.status === 'configured' ? 'Terpasang' : 'Tidak terdeteksi';
       const credHtml = t.credential
