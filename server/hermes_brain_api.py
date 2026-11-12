@@ -1156,6 +1156,42 @@ def scan_tools():
             if key:
                 nt_status, nt_src, nt_cred = "configured", "config.yaml mcp_servers.notion.env", _mask_secret(key)
     if nt_status == "missing": nt_status = "not_detected"
+    # Neon: baca ~/.config/neon/credentials.json (OAuth access_token)
+    nn_status, nn_src, nn_cred = "missing", "", None
+    neon_cfg = os.path.expanduser("~/.config/neon/credentials.json")
+    if os.path.isfile(neon_cfg):
+        try:
+            with open(neon_cfg, "r", encoding="utf-8") as f:
+                nd = json.load(f)
+            ntok = nd.get("access_token") or nd.get("refresh_token")
+            if ntok:
+                nn_status, nn_src, nn_cred = "configured", "~/.config/neon/credentials.json", _mask_secret(ntok)
+        except Exception:
+            pass
+    if nn_status == "missing": nn_status = "not_detected"
+    result.append({"id": "neon", "name": "Neon Postgres", "status": nn_status,
+                   "source": nn_src, "credential": nn_cred,
+                   "detected_at": datetime.utcnow().isoformat() + "Z"})
+
+    # Rclone (CLI cloud storage): baca ~/.config/rclone/rclone.conf
+    rc_status, rc_src, rc_cred = "missing", "", None
+    rc_cfg = os.path.expanduser("~/.config/rclone/rclone.conf")
+    if os.path.isfile(rc_cfg):
+        try:
+            with open(rc_cfg, "r", encoding="utf-8") as f:
+                rc_lines = f.read()
+            rc_remotes = [l.strip("[] ").strip() for l in rc_lines.splitlines()
+                         if l.strip().startswith("[") and l.strip().endswith("]")]
+            rc_has_token = "token" in rc_lines.lower() or "secret" in rc_lines.lower()
+            if rc_remotes and rc_has_token:
+                rc_status, rc_src, rc_cred = "configured", "~/.config/rclone/rclone.conf (" + ", ".join(rc_remotes) + ")", _mask_secret(rc_remotes[0])
+        except Exception:
+            pass
+    if rc_status == "missing": rc_status = "not_detected"
+    result.append({"id": "rclone", "name": "Rclone", "status": rc_status,
+                   "source": rc_src, "credential": rc_cred,
+                   "detected_at": datetime.utcnow().isoformat() + "Z"})
+
     result.append({"id": "notion", "name": "Notion", "status": nt_status,
                    "source": nt_src, "credential": nt_cred,
                    "detected_at": datetime.utcnow().isoformat() + "Z"})
@@ -1234,12 +1270,11 @@ def scan_tools():
         ("stripe", "Stripe", ["STRIPE_SECRET_KEY"], [], []),
         ("twilio", "Twilio", ["TWILIO_AUTH_TOKEN"], [], []),
         ("sendgrid", "SendGrid", ["SENDGRID_API_KEY"], [], []),
-        ("box_mcp", "Box (MCP)", [], ["box"], ["BOX_ACCESS_TOKEN", "BOX_JWT"]),
+        ("box_mcp", "Box by Simular (MCP)", [], ["box"], ["BOX_ACCESS_TOKEN", "BOX_JWT"]),
         ("googledrive", "Google Drive", ["GOOGLE_DRIVE_REFRESH_TOKEN"], [], []),
         ("tailscale", "Tailscale", ["TS_AUTHKEY", "TAILSCALE_API_KEY"], [], []),
         ("okx", "OKX Onchain OS", ["OKX_API_KEY", "OKX_SECRET_KEY", "OKX_PASSPHRASE"], [], []),
         ("baw", "Binance Agentic Wallet", ["BAW_TOKEN", "BAW_API_KEY", "BAW_ADDRESS", "BINANCE_AGENTIC_TOKEN"], [], []),
-        ("neon", "Neon Postgres", ["NEON_API_KEY", "NEON_DATABASE_URL"], [], []),
         ("whatsapp", "WhatsApp Gateway", ["WHATSAPP_ACCESS_TOKEN", "BAILEYS_AUTH", "WHATSAPP_API_KEY"], [], []),
         ("email", "Email SMTP/IMAP", ["SMTP_PASSWORD", "SMTP_PASS", "IMAP_PASSWORD", "ZOHO_TOKEN"], [], []),
         ("instagram", "Instagram Graph API", ["IG_ACCESS_TOKEN", "INSTAGRAM_ACCESS_TOKEN"], [], []),
