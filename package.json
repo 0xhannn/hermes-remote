@@ -1,10 +1,6 @@
 {
   "name": "hermes-remote",
-<<<<<<< HEAD
-  "version": "1.0.22",
-=======
-  "version": "1.0.22",
->>>>>>> 10a50ef (chore: bump 1.0.22 (fitur Tools scan 123 tool + sidebar fix))
+  "version": "1.0.23",
   "description": "Full-spectrum local-first web control center and system manager for Hermes Agent",
   "main": "bin/cli.js",
   "files": [
@@ -20,6 +16,7 @@
     "notion/",
     "server/",
     "settings/",
+    "tools/",
     "skills/"
   ],
   "bin": {
