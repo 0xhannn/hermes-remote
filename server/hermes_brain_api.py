@@ -1133,10 +1133,12 @@ def scan_tools():
         if isinstance(mcp, dict) and "firecrawl" in mcp:
             fc = mcp["firecrawl"]
             if isinstance(fc, dict):
-                envmap = fc.get("env", {}) if isinstance(fc.get("env"), dict) else {}
-                key = envmap.get("FIRECRAWL_API_KEY")
+                mc_env = fc.get("env", {}) if isinstance(fc.get("env"), dict) else {}
+                key = mc_env.get("FIRECRAWL_API_KEY")
                 if key:
                     fc_status, fc_src, fc_cred = "configured", "config.yaml mcp_servers.firecrawl.env", _mask_secret(key)
+    if fc_status == "missing" and envmap.get("FIRECRAWL_API_KEY"):
+        fc_status, fc_src, fc_cred = "configured", "env FIRECRAWL_API_KEY", _mask_secret(envmap["FIRECRAWL_API_KEY"])
     if fc_status == "missing": fc_status = "not_detected"
     result.append({"id": "firecrawl", "name": "Firecrawl", "status": fc_status,
                    "source": fc_src, "credential": fc_cred,
@@ -1149,8 +1151,8 @@ def scan_tools():
     if isinstance(mcp, dict) and "notion" in mcp:
         fc = mcp["notion"]
         if isinstance(fc, dict):
-            envmap = fc.get("env", {}) if isinstance(fc.get("env"), dict) else {}
-            key = envmap.get("NOTION_TOKEN")
+            mc_env = fc.get("env", {}) if isinstance(fc.get("env"), dict) else {}
+            key = mc_env.get("NOTION_TOKEN")
             if key:
                 nt_status, nt_src, nt_cred = "configured", "config.yaml mcp_servers.notion.env", _mask_secret(key)
     if nt_status == "missing": nt_status = "not_detected"
@@ -1236,10 +1238,10 @@ def scan_tools():
         ("googledrive", "Google Drive", ["GOOGLE_DRIVE_REFRESH_TOKEN"], [], []),
         ("tailscale", "Tailscale", ["TS_AUTHKEY", "TAILSCALE_API_KEY"], [], []),
         ("okx", "OKX Onchain OS", ["OKX_API_KEY", "OKX_SECRET_KEY", "OKX_PASSPHRASE"], [], []),
-        ("baw", "Binance Agentic Wallet", ["BAW_TOKEN", "BAW_API_KEY", "BINANCE_AGENTIC_TOKEN"], [], []),
+        ("baw", "Binance Agentic Wallet", ["BAW_TOKEN", "BAW_API_KEY", "BAW_ADDRESS", "BINANCE_AGENTIC_TOKEN"], [], []),
         ("neon", "Neon Postgres", ["NEON_API_KEY", "NEON_DATABASE_URL"], [], []),
         ("whatsapp", "WhatsApp Gateway", ["WHATSAPP_ACCESS_TOKEN", "BAILEYS_AUTH", "WHATSAPP_API_KEY"], [], []),
-        ("email", "Email SMTP/IMAP", ["SMTP_PASSWORD", "IMAP_PASSWORD", "ZOHO_TOKEN"], [], []),
+        ("email", "Email SMTP/IMAP", ["SMTP_PASSWORD", "SMTP_PASS", "IMAP_PASSWORD", "ZOHO_TOKEN"], [], []),
         ("instagram", "Instagram Graph API", ["IG_ACCESS_TOKEN", "INSTAGRAM_ACCESS_TOKEN"], [], []),
         ("helius", "Helius Solana RPC", ["HELIUS_API_KEY"], [], []),
         ("fishaudio", "Fish Audio TTS", ["FISH_API_KEY"], [], []),
