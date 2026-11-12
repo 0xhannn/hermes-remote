@@ -272,7 +272,6 @@
       <div class="toolbar">
         <button class="btn btn-secondary" id="listBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Tool Terdaftar</span></button>
         <button class="btn" id="scanBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><span id="scanLabel">Pindai Sekarang</span></button>
-        <span class="toolbar-meta" id="scanMeta"></span>
       </div>
       <div class="notice" id="errorBox" style="display:none"></div>
       <div class="empty-state" id="emptyState">
@@ -295,7 +294,6 @@
   const toolGrid = document.getElementById('toolGrid');
   const emptyState = document.getElementById('emptyState');
   const errorBox = document.getElementById('errorBox');
-  const scanMeta = document.getElementById('scanMeta');
   const scanLabel = document.getElementById('scanLabel');
   const listBtn = document.getElementById('listBtn');
   let lastTools = null;
@@ -362,12 +360,10 @@
     if (!tools || !tools.length) {
       emptyState.style.display = 'block';
       toolGrid.innerHTML = '';
-      scanMeta.textContent = 'Tidak ada tool terdeteksi.';
       return;
     }
     emptyState.style.display = 'none';
     const configured = tools.filter(t => t.status === 'configured');
-    scanMeta.textContent = (scannedAt ? 'Pindai ' + scannedAt.replace('T', ' ').slice(0, 19) + ' UTC' : 'Pindai');
     if (!configured.length) {
       toolGrid.innerHTML = '<div class="empty-state" style="display:block"><span class="big"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></span>Belum ada tool terpasang.</div>';
       return;
