@@ -1120,21 +1120,36 @@ def scan_tools():
                    "source": nt_src, "credential": nt_cred,
                    "detected_at": datetime.utcnow().isoformat() + "Z"})
 
-    # ---- OpenRouter / 9router (config model/fallback) ----
-    or_status, or_src, or_cred = "missing", "", None
+    # ---- 9router (custom provider / model api_key) ----
+    n_status, n_src, n_cred = "missing", "", None
     model_cfg = cfg.get("model", {})
-    or_key = model_cfg.get("api_key")
-    if or_key:
-        or_status, or_src, or_cred = "configured", "config.yaml model.api_key", _mask_secret(or_key)
+    m_base = str(model_cfg.get("base_url") or "").lower()
+    m_key = model_cfg.get("api_key")
+    if m_key and "9router" in m_base:
+        n_status, n_src, n_cred = "configured", "config.yaml model (9router)", _mask_secret(m_key)
+    if n_status != "configured":
+        for cp in (cfg.get("custom_providers") or []):
+            if isinstance(cp, dict) and str(cp.get("name") or "").lower() == "9router" and cp.get("api_key"):
+                n_status, n_src, n_cred = "configured", "config.yaml custom_providers.9router", _mask_secret(cp["api_key"])
+                break
+    if n_status == "missing": n_status = "not_detected"
+    result.append({"id": "9router", "name": "9router", "status": n_status,
+                   "source": n_src, "credential": n_cred,
+                   "detected_at": datetime.utcnow().isoformat() + "Z"})
+
+    # ---- OpenRouter (env / fallback providers) ----
+    or_status, or_src, or_cred = "missing", "", None
+    if os.environ.get("OPENROUTER_API_KEY"):
+        or_status, or_src, or_cred = "configured", "env OPENROUTER_API_KEY", _mask_secret(os.environ["OPENROUTER_API_KEY"])
     else:
         fb = model_cfg.get("fallback_providers", [])
         if fb and isinstance(fb, list):
             for p in fb:
-                if isinstance(p, dict) and p.get("api_key"):
+                if isinstance(p, dict) and p.get("api_key") and "openrouter" in str(p.get("base_url") or "").lower():
                     or_status, or_src, or_cred = "configured", "config.yaml fallback_providers", _mask_secret(p["api_key"])
                     break
     if or_status == "missing": or_status = "not_detected"
-    result.append({"id": "openrouter", "name": "OpenRouter / 9router", "status": or_status,
+    result.append({"id": "openrouter", "name": "OpenRouter", "status": or_status,
                    "source": or_src, "credential": or_cred,
                    "detected_at": datetime.utcnow().isoformat() + "Z"})
 
