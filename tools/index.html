@@ -160,6 +160,17 @@
     .filter-overlay { z-index: 210; }
     .filter-modal { max-width: 340px; }
     .reg-modal { max-width: 480px; }
+    .btn-ghost { background: transparent; color: #6B7280; border: 1px solid #E5E7EB; }
+    .btn-ghost:hover { background: #F9FAFB; color: #111827; }
+    .mg-modal .modal-body { padding: 30px 28px 32px; text-align: center; }
+    .mg-ic { width: 54px; height: 54px; margin: 0 auto 16px; border-radius: 16px; background: #FEF2F2; color: #DC2626; display: flex; align-items: center; justify-content: center; }
+    .mg-ic svg { width: 26px; height: 26px; }
+    .mg-ic.warn { background: #FFFBEB; color: #D97706; }
+    .mg-title { font-size: 17px; font-weight: 600; color: #111827; }
+    .mg-desc { font-size: 13.5px; color: #6B7280; line-height: 1.55; max-width: 340px; margin: 8px auto 22px; }
+    .mg-btn { width: 100%; padding: 11px; border-radius: 10px; font-weight: 600; }
+    .mg-row { display: flex; gap: 10px; justify-content: center; }
+    .mg-row .btn { flex: 1; padding: 11px; border-radius: 10px; font-weight: 600; }
     .conn-title { display: flex; gap: 10px; align-items: center; }
     .conn-ic { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; }
     .conn-izink { margin-bottom: 12px; }
@@ -733,30 +744,42 @@ let toolCat = 'all';
         } else showModalNotice(res.error || 'Gagal simpan.');
       } catch (e) { showModalNotice('Gagal: ' + e.message); }
     };
-  }  function openManageModal(toolId, ov) {
+  }  const MG_PLUG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></svg>';
+  const MG_WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
+  function openManageModal(toolId, ov) {
     const item = lastTools.find(x => x.id === toolId) || {};
+    const nm = escapeHtml(item.name || toolId);
     const mv = document.createElement('div');
     mv.className = 'overlay'; mv.id = 'toolManageOverlay';
-    mv.innerHTML = '<div class="modal reg-modal"><div class="modal-head"><h3>Kelola ' + escapeHtml(item.name || toolId) + '</h3>' +
-      '<button class="btn btn-sm" id="mgClose">Tutup</button></div><div class="modal-body">' +
-      '<div class="row"><button class="btn btn-danger" id="mgDisconnect" type="button">Putuskan Sambungan</button></div></div></div>';
+    mv.innerHTML = '<div class="modal reg-modal mg-modal"><div class="modal-head"><h3>Kelola ' + nm + '</h3>' +
+      '<button class="btn btn-sm btn-ghost" id="mgClose" type="button" aria-label="Tutup">✕</button></div><div class="modal-body">' +
+      '<div class="mg-ic">' + MG_PLUG + '</div>' +
+      '<div class="mg-title">' + nm + '</div>' +
+      '<div class="mg-desc">Putuskan sambungan untuk ' + nm + '. Kamu bisa menyambungkan lagi kapan saja.</div>' +
+      '<button class="btn btn-danger mg-btn" id="mgDisconnect" type="button">Putuskan Sambungan</button></div></div>';
     _openModal(mv);
     mv.querySelector('#mgClose').onclick = () => history.back();
     mv.onclick = e => { if (e.target === mv) history.back(); };
     const body = mv.querySelector('.modal-body');
+    const renderDefault = () => {
+      body.innerHTML = '<div class="mg-ic">' + MG_PLUG + '</div>' +
+        '<div class="mg-title">' + nm + '</div>' +
+        '<div class="mg-desc">Putuskan sambungan untuk ' + nm + '. Kamu bisa menyambungkan lagi kapan saja.</div>' +
+        '<button class="btn btn-danger mg-btn" id="mgDisconnect" type="button">Putuskan Sambungan</button>';
+      body.querySelector('#mgDisconnect').onclick = showConfirm;
+    };
     const showConfirm = () => {
-      body.innerHTML = '<div class="tl-empty">Yakin putuskan sambungan?</div>' +
-        '<div class="row"><button class="btn btn-sec" id="mgCancel" type="button">Batal</button>' +
+      body.innerHTML = '<div class="mg-ic warn">' + MG_WARN + '</div>' +
+        '<div class="mg-title">Yakin putuskan sambungan?</div>' +
+        '<div class="mg-desc">Aksi ini akan memutuskan ' + nm + ' dan tidak dapat dibatalkan.</div>' +
+        '<div class="mg-row"><button class="btn btn-sec" id="mgCancel" type="button">Batal</button>' +
         '<button class="btn btn-danger" id="mgYes" type="button">Ya, Putuskan</button></div>';
-      body.querySelector('#mgCancel').onclick = () => {
-        body.innerHTML = '<div class="row"><button class="btn btn-danger" id="mgDisconnect" type="button">Putuskan Sambungan</button></div>';
-        body.querySelector('#mgDisconnect').onclick = showConfirm;
-      };
+      body.querySelector('#mgCancel').onclick = renderDefault;
       body.querySelector('#mgYes').onclick = async () => {
         try {
           const res = await apiFetch('tools/disconnect', 'POST', { id: toolId });
           if (res.success) {
-            showToast((item.name || toolId) + ' diputuskan.');
+            showToast(nm + ' diputuskan.');
             const it = lastTools.find(x => x.id === toolId);
             if (it) it.status = 'not_detected';
             _rerenderGrid(_pageOv);
