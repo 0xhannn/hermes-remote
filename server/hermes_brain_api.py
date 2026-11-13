@@ -2181,6 +2181,21 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
                 configured = False
             return self._send_json(200, {"success": True, "id": tid, "configured": configured})
 
+        if path == "/api/hermes/tools/portal/set":
+            tid = body.get("id")
+            if not isinstance(tid, str):
+                return self._send_json(400, {"success": False, "error": "bad payload: {id} required"})
+            if tid not in _PORTAL_TOOLS:
+                return self._send_json(404, {"success": False, "error": "bukan tool portal"})
+            connected = bool(body.get("connected"))
+            reg = _load_registry()
+            if connected:
+                reg[tid] = {"source": "portal", "registered_at": datetime.utcnow().isoformat() + "Z"}
+            elif tid in reg and reg[tid].get("source") == "portal":
+                del reg[tid]
+            _save_registry(reg)
+            return self._send_json(200, {"success": True, "id": tid, "connected": connected})
+
         if path == "/api/hermes/auth/logout":
             expired = "hermes_pin=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"
             return self._send_json(200, {"success": True, "message": "Logout OK"}, set_cookie=expired)
