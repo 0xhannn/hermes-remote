@@ -577,38 +577,27 @@ let toolCat = 'all';
     const fields = schema.fields || [];
     const isOauth = !!schema.oauth;
     const isCli = meta.method === 'cli';
-    const isPortal = meta.method === 'portal';
-    const noField = isOauth || isCli || isPortal;
+    const noField = isOauth || isCli;
     const rv = document.createElement('div');
     rv.className = 'overlay'; rv.id = 'toolRegOverlay';
     let html = '<div class="modal reg-modal"><div class="modal-head"><h3>Tambah ' + escapeHtml(meta.name || toolId) + '</h3>' +
       '<button class=\"btn btn-sm\" id=\"regModalClose\">Tutup</button></div><div class=\"modal-body\">' +
       (schema.auth_url && !noField ? '<div class=\"conn-izink\"><a class=\"conn-link\" href=\"' + escapeHtml(schema.auth_url) + '\" target=\"_blank\" rel=\"noopener\">Buka halaman izin →</a></div>' : '') +
       '<div class="tl-form">';
-    if (isPortal) {
-      html += '<div class="tl-portal"><p class="oauth-hint">Dikelola lewat Portal Koneksi Hermes.</p><button class="btn btn-sec" id="portalOpen" type="button">Buka Portal</button></div>';
-    }
     if (!noField) {
       fields.forEach(f => {
         html += '<div><label>' + escapeHtml(f.label || f.key) + '</label><input type="' + (f.type === 'text' ? 'text' : 'password') + '" data-key="' + escapeHtml(f.key) + '" placeholder="Masukkan ' + escapeHtml(f.label || f.key) + '" autocomplete="off"></div>';
       });
     }
     html += '<div class="row"><button class="btn btn-sec" id="regCancel" type="button">Batal</button>' +
-            '<button class="btn btn-primary" id="regSave" type="button">' + (isOauth ? 'Sambungkan via OAuth' : (isCli ? 'Jalankan Setup di Terminal' : (isPortal ? 'Tandai Terhubung via Portal' : 'Simpan & Sambungkan'))) + '</button></div></div></div></div>';
+            '<button class="btn btn-primary" id="regSave" type="button">' + (isOauth ? 'Sambungkan via OAuth' : (isCli ? 'Jalankan Setup di Terminal' : 'Simpan & Sambungkan')) + '</button></div></div></div></div>';
     rv.innerHTML = html;
     _openModal(rv);
     rv.querySelector('#regModalClose').onclick = () => history.back();
     rv.querySelector('#regCancel').onclick = () => history.back();
-    const pOpen = rv.querySelector('#portalOpen');
-    if (pOpen) pOpen.onclick = () => window.open('https://portal.nousresearch.com', '_blank');
     rv.onclick = e => { if (e.target === rv) history.back(); };
     rv.querySelector('#regSave').onclick = async () => {
       if (isOauth) { window.open('/api/hermes/tools/oauth/start?provider=' + encodeURIComponent(toolId), '_blank'); return; }
-      if (isPortal) {
-        await apiFetch('tools/portal/set', 'POST', { id: toolId, connected: true });
-        history.back();
-        return;
-      }
       if (isCli) {
         const runRes = await apiFetch('tools/cli/run', 'POST', { id: toolId });
         if (!runRes.success) { showModalNotice(runRes.error || 'Gagal jalankan setup di terminal'); history.back(); return; }

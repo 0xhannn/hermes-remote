@@ -1476,7 +1476,7 @@ def scan_tools():
     for tool in result:
         tool["category"] = cats_of.get(tool.get("id"), "Lainnya")
         tool["supported"] = tool.get("id") in cats_of
-        tool["method"] = "portal" if tool.get("id") in _PORTAL_TOOLS else ("cli" if tool.get("id") in _CLI_TOOLS else "manual")
+        tool["method"] = "cli" if tool.get("id") in _CLI_TOOLS else "manual"
     seen = {x.get("id") for x in result}
     for tid, cfg in TOOL_SCHEMAS.items():
         if tid not in seen:
@@ -1517,7 +1517,6 @@ def _oauth_apps():
     except Exception:
         return {}
 
-_PORTAL_TOOLS = {"notion", "gmail", "gdrive", "telegram"}
 _CLI_TOOLS = {
     "github": {"check": ["gh", "auth", "status"], "setup": ["gh", "auth", "login", "--web"]},
     "vercel": {"check": ["vercel", "whoami"], "setup": ["vercel", "login"]},
@@ -2180,21 +2179,6 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
             except Exception:
                 configured = False
             return self._send_json(200, {"success": True, "id": tid, "configured": configured})
-
-        if path == "/api/hermes/tools/portal/set":
-            tid = body.get("id")
-            if not isinstance(tid, str):
-                return self._send_json(400, {"success": False, "error": "bad payload: {id} required"})
-            if tid not in _PORTAL_TOOLS:
-                return self._send_json(404, {"success": False, "error": "bukan tool portal"})
-            connected = bool(body.get("connected"))
-            reg = _load_registry()
-            if connected:
-                reg[tid] = {"source": "portal", "registered_at": datetime.utcnow().isoformat() + "Z"}
-            elif tid in reg and reg[tid].get("source") == "portal":
-                del reg[tid]
-            _save_registry(reg)
-            return self._send_json(200, {"success": True, "id": tid, "connected": connected})
 
         if path == "/api/hermes/auth/logout":
             expired = "hermes_pin=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"
