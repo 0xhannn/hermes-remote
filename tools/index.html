@@ -383,7 +383,7 @@
             } else {
               statusEl.textContent = 'Proses selesai. Koneksi belum aktif — selesaikan izin bila diminta.';
             }
-            setTimeout(() => { clearInterval(timer); ov.remove(); if (typeof _rerenderGrid === 'function') _rerenderGrid(_pageOv); }, 1600);
+            setTimeout(() => { clearInterval(timer); ov.remove(); if (typeof refreshGrid === 'function') refreshGrid(); }, 1600);
           }
         } catch (e) {}
       }, 1200);
@@ -496,6 +496,13 @@
     }
     emptyState.style.display = 'none';
     _rerenderGrid(_pageOv);
+  }
+
+  async function refreshGrid() {
+    try {
+      const res = await apiFetch('tools/scan');
+      if (res.success) renderTools(res.tools, res.scanned_at);
+    } catch (e) {}
   }
 
   function escapeHtml(s) {
@@ -689,8 +696,9 @@ let toolCat = 'all';
           showToast((meta.name || toolId) + ' terhubung.');
           const item = lastTools.find(x => x.id === toolId);
           if (item) item.status = 'configured';
+          _rerenderGrid(_pageOv);
           history.back();
-          _rerenderGrid(ov);
+          refreshGrid();
         } else showModalNotice(res.error || 'Gagal simpan.');
       } catch (e) { showModalNotice('Gagal: ' + e.message); }
     };
@@ -715,8 +723,9 @@ let toolCat = 'all';
           showToast((item.name || toolId) + ' diputuskan.');
           const it = lastTools.find(x => x.id === toolId);
           if (it) it.status = 'not_detected';
+          _rerenderGrid(_pageOv);
           history.back();
-          _rerenderGrid(ov);
+          refreshGrid();
         } else showModalNotice(res.error || 'Gagal memutuskan.');
       } catch (e) { showModalNotice('Gagal: ' + e.message); }
     };

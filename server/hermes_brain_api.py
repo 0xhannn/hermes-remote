@@ -1089,18 +1089,27 @@ _MCP_TOOLS = {
 }
 
 
+_MCP_CACHE = {"t": 0, "val": None}
+
+
 def _mcp_connected():
     """Baca status MCP dari Hermes agent lokal (laptop) via `hermes mcp list`."""
+    now = time.time()
+    if now - _MCP_CACHE["t"] < 15:
+        return _MCP_CACHE["val"]
     try:
         r = subprocess.run(["hermes", "mcp", "list"], capture_output=True,
                             timeout=30, text=True, encoding="utf-8", errors="replace")
         out = (r.stdout or "") + (r.stderr or "")
         if "No MCP servers configured." in out:
-            return set()
-        conn = set()
-        for sid in _MCP_TOOLS:
-            if re.search(r'(?<![\w])' + re.escape(sid) + r'(?![\w])', out):
-                conn.add(sid)
+            conn = set()
+        else:
+            conn = set()
+            for sid in _MCP_TOOLS:
+                if re.search(r'(?<![\w])' + re.escape(sid) + r'(?![\w])', out):
+                    conn.add(sid)
+        _MCP_CACHE["t"] = now
+        _MCP_CACHE["val"] = conn
         return conn
     except Exception:
         return set()
@@ -2262,6 +2271,16 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
                 if tid in reg:
                     del reg[tid]
                     _save_registry(reg)
+                _sb = __import__('subprocess')
+                try:
+                    if tid in _MCP_TOOLS:
+                        _sb.run(['hermes', 'mcp', 'remove', tid], capture_output=True, text=True, timeout=60)
+                        _MCP_CACHE["t"] = 0
+                    elif tid in _CLI_TOOLS:
+                        cmd = ['gh', 'auth', 'logout'] if tid == 'github' else ['vercel', 'logout']
+                        _sb.run(cmd, capture_output=True, text=True, timeout=60)
+                except Exception:
+                    pass
                 return self._send_json(200, {"success": True, "id": tid})
             except Exception as e:
                 return self._send_json(500, {"success": False, "error": str(e)})
@@ -2300,6 +2319,7 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
             try:
                 __import__("subprocess").Popen(["hermes", "mcp", "install", cat], stdout=__import__("subprocess").DEVNULL, stderr=__import__("subprocess").DEVNULL)
                 __import__("subprocess").Popen('start "MCP Login - %s" cmd /k hermes mcp login %s' % (cat, cat), shell=True)
+                _MCP_CACHE["t"] = 0
             except Exception as e:
                 return self._send_json(500, {"success": False, "error": str(e)})
             return self._send_json(200, {"success": True, "id": tid})
@@ -2805,6 +2825,6 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer((HOST, PORT), HermesBrainHandler) as httpd:
+    with socketserver.ThreadingTCPServer((HOST, PORT), HermesBrainHandler) as httpd:
         print(f"Hermes Brain API running on {HOST}:{PORT}...")
         httpd.serve_forever()
