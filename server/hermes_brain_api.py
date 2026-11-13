@@ -2584,6 +2584,7 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
                             cfg["model"]["base_url"] = p.get("base_url")
                         if p.get("api_key"):
                             cfg["model"]["api_key"] = p.get("api_key")
+                        p["model"] = target_model  # sinkronkan model provider biar gak stale
                         break
 
             save_yaml(cfg)

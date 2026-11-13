@@ -523,7 +523,8 @@
       } else {
         models = providerData?.models?.length ? providerData.models : (providerData?.model ? [providerData.model] : []);
       }
-      const selectedModel = target === 'quick' ? APP_STATE?.active?.model : providerData?.model;
+      const selectedModel = target === 'quick' ? APP_STATE?.active?.model
+        : (provider === APP_STATE?.active?.provider ? APP_STATE?.active?.model : providerData?.model);
       document.getElementById('modelPickerTitle').textContent = target === 'quick' ? 'Pilih Model' : `Pilih Model — ${provider}`;
       list.replaceChildren();
       if (!models.length) {
