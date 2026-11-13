@@ -28,6 +28,7 @@ import socketserver
 import http.server
 import urllib.parse
 import urllib.request
+import secrets
 import subprocess
 import time
 import stat
@@ -1058,7 +1059,9 @@ _TOOL_NAMES = {
 }
 
 def _tool_schemas():
-    return {tid: {"fields": cfg["fields"], "auth_url": cfg.get("auth_url")}
+    apps = _oauth_apps()
+    return {tid: {"fields": cfg["fields"], "auth_url": cfg.get("auth_url"),
+                  "oauth": bool(apps.get(tid) and apps[tid].get("client_id"))}
             for tid, cfg in TOOL_SCHEMAS.items()}
 
 def _load_registry():
@@ -1489,6 +1492,29 @@ def scan_tools():
 
 
 
+_REPO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+_OAUTH_CALLBACK = "http://127.0.0.1:%s/api/hermes/tools/oauth/callback" % PORT
+_OAUTH_STATE = {}
+_OAUTH_PROVIDERS = {
+    "github": {
+        "authorize": "https://github.com/login/oauth/authorize",
+        "token": "https://github.com/login/oauth/access_token",
+        "scope": "repo read:user",
+    },
+    "vercel": {
+        "authorize": "https://vercel.com/oauth/authorize",
+        "token": "https://api.vercel.com/v2/oauth/access_token",
+        "scope": "",
+    },
+}
+
+def _oauth_apps():
+    try:
+        with open(os.path.join(_REPO_DIR, "tools", "oauth_apps.json"), encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
 class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
 
     def _send_cors(self):
@@ -1689,6 +1715,56 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
                                              "scanned_at": datetime.utcnow().isoformat() + "Z"})
             except Exception as e:
                 return self._send_json(500, {"success": False, "error": "Scan gagal: " + str(e)})
+
+        if path == "/api/hermes/tools/oauth/start":
+            q = urllib.parse.parse_qs(parsed.query)
+            provider = (q.get("provider") or [""])[0]
+            app = (_oauth_apps().get(provider) or {})
+            cfg = _OAUTH_PROVIDERS.get(provider)
+            if not app.get("client_id") or not cfg:
+                return self._send_json(400, {"success": False, "error": "OAuth app untuk " + provider + " belum dikonfigurasi (tools/oauth_apps.json)"})
+            state = secrets.token_urlsafe(16)
+            _OAUTH_STATE[state] = provider
+            params = urllib.parse.urlencode({
+                "client_id": app["client_id"],
+                "redirect_uri": _OAUTH_CALLBACK,
+                "scope": cfg["scope"],
+                "state": state,
+            })
+            return self._send_json(200, {"success": True, "url": cfg["authorize"] + "?" + params})
+
+        if path == "/api/hermes/tools/oauth/callback":
+            q = urllib.parse.parse_qs(parsed.query)
+            provider = (q.get("provider") or [""])[0]
+            code = (q.get("code") or [""])[0]
+            state = (q.get("state") or [""])[0]
+            if _OAUTH_STATE.pop(state, None) != provider:
+                return self._send_json(400, {"success": False, "error": "state tidak valid"})
+            app = (_oauth_apps().get(provider) or {})
+            cfg = _OAUTH_PROVIDERS.get(provider)
+            if not app.get("client_id") or not cfg or not code:
+                return self._send_json(400, {"success": False, "error": "parameter tidak lengkap"})
+            body = urllib.parse.urlencode({
+                "client_id": app["client_id"],
+                "client_secret": app["client_secret"],
+                "code": code,
+                "redirect_uri": _OAUTH_CALLBACK,
+            }).encode()
+            req = urllib.request.Request(cfg["token"], data=body, headers={"Accept": "application/json", "User-Agent": "hermes-remote"})
+            tok = json.load(urllib.request.urlopen(req, timeout=30))
+            access = tok.get("access_token")
+            if not access:
+                detail = tok.get("error_description") or tok.get("error") or "token kosong"
+                return self._send_json(400, {"success": False, "error": "Gagal tukar kode: " + str(detail)})
+            reg = _load_registry()
+            reg[provider] = {"fields": {"token": access}, "source": "oauth", "registered_at": datetime.utcnow().isoformat() + "Z"}
+            _save_registry(reg)
+            html = '<html><body style="font-family:sans-serif;text-align:center;padding-top:60px"><h3>Terhubung ✓</h3><p>' + provider + ' termasang ke registry. Tab boleh ditutup.</p></body></html>'
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(html.encode("utf-8"))
+            return
 
         if path == "/api/hermes/logs":
             try:
