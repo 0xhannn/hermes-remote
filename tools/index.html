@@ -136,8 +136,20 @@
     .modal-head h3 { font-size: 15px; margin: 0; }
     .modal-body { overflow: auto; padding: 8px 16px 16px; }
     .tool-list-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
-    .tl-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid #E5E7EB; border-radius: 8px; font-size: 13px; }
-    .tl-name { color: #1C1917; font-weight: 500; }
+    .tl-item { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 12px 8px; border: 1px solid #E5E7EB; border-radius: 10px; background: #fff; min-height: 92px; }
+    .tl-icon { font-size: 24px; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; }
+    .tl-name { color: #1C1917; font-weight: 600; font-size: 12.5px; line-height: 1.25; }
+    .tl-act { margin-top: auto; width: 100%; }
+    .tl-add { width: 100%; padding: 5px 8px; border: none; border-radius: 7px; background: #F3F4F6; color: #111827; font-weight: 600; font-size: 12.5px; cursor: pointer; }
+    .tl-add:hover { background: #E5E7EB; }
+    .tl-ok { width: 100%; padding: 5px 8px; border: none; border-radius: 7px; background: #DCFCE7; color: #15803D; font-weight: 700; font-size: 12.5px; display: flex; align-items: center; justify-content: center; gap: 4px; }
+    .tl-form { display: flex; flex-direction: column; gap: 8px; padding: 8px 0 12px; border-bottom: 1px solid #E5E7EB; margin-bottom: 10px; }
+    .tl-form label { font-size: 12px; color: #57534E; }
+    .tl-form input { padding: 7px 9px; border: 1px solid #D6D3D1; border-radius: 8px; font-size: 13px; width: 100%; box-sizing: border-box; }
+    .tl-form .row { display: flex; gap: 8px; margin-top: 6px; }
+    .tl-form .btn { padding: 7px 12px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 13px; }
+    .tl-form .btn-primary { background: #18181B; color: #fff; flex: 1; }
+    .tl-form .btn-sec { background: #F3F4F6; color: #111827; }
     .tool-card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
@@ -448,16 +460,59 @@
   function openToolList() {
     const t = lastTools;
     if (!t) { showToast('Pindai dulu.'); return; }
+    const statusTxt = x => x.status === 'configured'
+      ? '<div class="tl-act"><button class="tl-ok" disabled>✔ Terhubung</button></div>'
+      : '<div class="tl-act"><button class="tl-add" data-tool="' + x.id + '" type="button">+ Tambah</button></div>';
     const items = t.map(x =>
-      '<div class="tl-item"><span class="tl-icon">' + toolIconHTML(x.id) + '</span><span class="tl-name">' + escapeHtml(x.name) + '</span></div>'
+      '<div class="tl-item"><span class="tl-icon">' + toolIconHTML(x.id) + '</span><span class="tl-name">' + escapeHtml(x.name) + '</span>' + statusTxt(x) + '</div>'
     ).join('');
     const ov = document.createElement('div');
     ov.className = 'overlay'; ov.id = 'toolListOverlay';
-    ov.innerHTML = '<div class="modal"><div class="modal-head"><h3>Tool Terdaftar</h3><button class="btn btn-sm" id="modalClose">Tutup</button></div><div class="modal-body"><div class="tool-list-grid">' + items + '</div></div></div>';
+    ov.innerHTML = '<div class="modal"><div class="modal-head"><h3>Tool Terdaftar</h3><button class="btn btn-sm" id="modalClose">Tutup</button></div><div class="modal-body">' +
+      '<div id="toolRegisterSlot"></div><div class="tool-list-grid">' + items + '</div></div></div>';
     document.body.appendChild(ov);
     document.getElementById('modalClose').onclick = () => ov.remove();
     ov.onclick = e => { if (e.target === ov) ov.remove(); };
+    ov.querySelectorAll('.tl-add').forEach(btn => {
+      btn.onclick = () => openRegisterForm(btn.dataset.tool, ov);
+    });
   }
+async function openRegisterForm(toolId, ov) {
+    let schemas = null;
+    try {
+      const res = await apiFetch('tools/schemas');
+      if (res.success) schemas = res.schemas || {};
+    } catch (e) {}
+    const meta = lastTools.find(x => x.id === toolId) || {};
+    const schema = (schemas && schemas[toolId]) || { fields: [{ key: 'api_key', label: 'API Key', type: 'token' }] };
+    const fields = schema.fields || [];
+    let html = '<div class="tl-form"><strong>Tambah ' + escapeHtml(meta.name || toolId) + '</strong>';
+    fields.forEach(f => {
+      html += '<div><label>' + escapeHtml(f.label || f.key) + '</label><input type="' + (f.type === 'text' ? 'text' : 'password') + '" data-key="' + escapeHtml(f.key) + '" placeholder="' + escapeHtml(f.label || f.key) + '" autocomplete="off"></div>';
+    });
+    html += '<div class="row"><button class="btn btn-sec" id="regCancel" type="button">Batal</button>' +
+            '<button class="btn btn-primary" id="regSave" type="button">Simpan & Sambungkan</button></div></div>';
+    const slot = ov.querySelector('#toolRegisterSlot');
+    slot.innerHTML = html;
+    slot.style.display = 'block';
+    document.getElementById('regCancel').onclick = () => { slot.innerHTML = ''; slot.style.display = 'none'; };
+    document.getElementById('regSave').onclick = async () => {
+      const payload = {};
+      fields.forEach(f => { const el = slot.querySelector('[data-key="' + f.key + '"]'); payload[f.key] = el ? el.value.trim() : ''; });
+      if (Object.values(payload).some(v => !v)) { showToast('Isi semua field dulu.'); return; }
+      try {
+        const res = await apiFetch('tools/register', 'POST', { id: toolId, fields: payload });
+        if (res.success) {
+          showToast((meta.name || toolId) + ' terhubung.');
+          const item = lastTools.find(x => x.id === toolId);
+          if (item) item.status = 'configured';
+          slot.innerHTML = ''; slot.style.display = 'none';
+          ov.remove(); openToolList();
+        } else showToast(res.error || 'Gagal simpan.');
+      } catch (e) { showToast('Gagal: ' + e.message); }
+    };
+  }
+
   listBtn.addEventListener('click', openToolList);
 
   async function handleAuth() {

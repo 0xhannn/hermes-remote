@@ -1027,6 +1027,53 @@ def _dotenv_map():
     return env
 
 
+REGISTRY_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tools", "registry.json")
+
+TOOL_SCHEMAS = {
+    "github": {"fields": [{"key": "token", "label": "GitHub OAuth Token", "type": "token"}]},
+    "vercel": {"fields": [{"key": "token", "label": "Vercel Token", "type": "token"}]},
+    "cloudflare": {"fields": [{"key": "api_key", "label": "Cloudflare API Token", "type": "token"}]},
+    "firecrawl": {"fields": [{"key": "api_key", "label": "Firecrawl API Key", "type": "token"}]},
+    "neon": {"fields": [{"key": "api_key", "label": "Neon API Key", "type": "token"}]},
+    "rclone": {"fields": [{"key": "config_path", "label": "Rclone Config Path", "type": "text"},
+                          {"key": "remote", "label": "Remote Name", "type": "text"}]},
+    "notion": {"fields": [{"key": "token", "label": "Notion Integration Token", "type": "token"}]},
+    "9router": {"fields": [{"key": "api_key", "label": "9Router API Key", "type": "token"}]},
+    "openrouter": {"fields": [{"key": "api_key", "label": "OpenRouter API Key", "type": "token"}]},
+    "npm": {"fields": [{"key": "token", "label": "npm Access Token", "type": "token"}]},
+}
+
+def _schema_for_env(tid, tname, envkeys):
+    if envkeys:
+        return {"fields": [{"key": ek.lower().replace("_", ""), "label": tname + " " + ek, "type": "token"} for ek in envkeys]}
+    return {"fields": [{"key": "api_key", "label": (tname or tid) + " API Key", "type": "token"}]}
+
+def _tool_schemas():
+    sc = dict(TOOL_SCHEMAS)
+    try:
+        for tool in scan_tools():
+            tid = tool.get("id")
+            if tid and tid not in sc:
+                sc[tid] = _schema_for_env(tid, tool.get("name") or tid, [])
+    except Exception:
+        pass
+    return sc
+
+def _load_registry():
+    try:
+        with open(REGISTRY_PATH, encoding="utf-8") as f:
+            d = json.load(f)
+            return d.get("tools", {}) if isinstance(d, dict) else {}
+    except Exception:
+        return {}
+
+def _save_registry(reg):
+    os.makedirs(os.path.dirname(REGISTRY_PATH), exist_ok=True)
+    tmp = REGISTRY_PATH + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump({"tools": reg}, f, indent=2, ensure_ascii=False)
+    os.replace(tmp, REGISTRY_PATH)
+
 def scan_tools():
     """Deteksi credential/auth tool yang terpasang pada host (lintas platform).
     Hanya status + sumber + nilai termask — tidak pernah ekspos token mentah."""
@@ -1403,6 +1450,22 @@ def scan_tools():
                        "source": src, "credential": cred,
                        "detected_at": datetime.utcnow().isoformat() + "Z"})
 
+    # --- overlay manually-registered tools (tools/registry.json) ---
+    try:
+        reg = _load_registry()
+        for rid, rinfo in reg.items():
+            for item in result:
+                if item.get("id") == rid and item.get("status") != "configured":
+                    flds = rinfo.get("fields", {}) if isinstance(rinfo, dict) else {}
+                    first_val = next(iter(flds.values()), None) if flds else None
+                    item["status"] = "configured"
+                    item["source"] = "tools/registry.json"
+                    if first_val:
+                        item["credential"] = _mask_secret(first_val)
+                    break
+    except Exception:
+        pass
+
     return result
 
 
@@ -1597,6 +1660,9 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
 
         if path == "/api/hermes/system/health":
             return self._send_json(200, get_system_health())
+
+        if path == "/api/hermes/tools/schemas":
+            return self._send_json(200, {"success": True, "schemas": _tool_schemas()})
 
         if path == "/api/hermes/tools/scan":
             try:
@@ -1958,6 +2024,22 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
             body = json.loads(raw_body.decode("utf-8")) if raw_body else {}
         except Exception:
             body = {}
+
+        if path == "/api/hermes/tools/register":
+            try:
+                tid = body.get("id")
+                fields = body.get("fields")
+                if not isinstance(tid, str) or not isinstance(fields, dict):
+                    return self._send_json(400, {"success": False, "error": "bad payload: {id, fields} required"})
+                known = {x["id"] for x in scan_tools()}
+                if tid not in known:
+                    return self._send_json(404, {"success": False, "error": "unknown tool: " + tid})
+                reg = _load_registry()
+                reg[tid] = {"fields": fields, "registered_at": datetime.utcnow().isoformat() + "Z"}
+                _save_registry(reg)
+                return self._send_json(200, {"success": True, "id": tid, "status": "configured"})
+            except Exception as e:
+                return self._send_json(500, {"success": False, "error": str(e)})
 
         if path == "/api/hermes/auth/logout":
             expired = "hermes_pin=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"
