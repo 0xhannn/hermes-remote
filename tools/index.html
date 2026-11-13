@@ -147,6 +147,9 @@
     .tl-add:hover { background: #E5E7EB; }
     .tl-ok { width: 100%; padding: 7px 8px; border: none; border-radius: 8px; background: #DCFCE7; color: #15803D; font-weight: 700; font-size: 12.5px; display: flex; align-items: center; justify-content: center; gap: 4px; }
     .tl-warn { width: 100%; padding: 7px 8px; border: none; border-radius: 8px; background: #FEF3C7; color: #B45309; font-weight: 700; font-size: 12.5px; display: flex; align-items: center; justify-content: center; gap: 4px; }
+    .spin { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(128,128,128,.3); border-top-color: currentColor; border-radius: 50%; animation: spin .6s linear infinite; vertical-align: -2px; margin-right: 5px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    button:disabled { cursor: progress; opacity: .75; }
     .tl-form { display: flex; flex-direction: column; gap: 12px; padding: 8px 0 12px; border-bottom: 1px solid #E5E7EB; margin-bottom: 10px; }
     .tl-form > div { display: flex; flex-direction: column; gap: 6px; }
     .tl-form label { font-size: 12px; color: #57534E; }
@@ -365,7 +368,7 @@
   function startAct(toolId, method) {
     const ov = document.createElement('div');
     ov.className = 'overlay'; ov.id = 'actOverlay';
-    ov.innerHTML = '<div class="modal reg-modal"><div class="modal-head"><h3 class="modal-title">Menghubungkan…</h3><button class="btn btn-sm" type="button" id="actClose">Tutup</button></div><div class="modal-body"><pre style="background:#111;color:#0f0;padding:10px;max-height:280px;overflow:auto;font:12px monospace;white-space:pre-wrap;margin:0;" id="actLog"></pre><p id="actStatus" style="margin:10px 0 0;">Memulai…</p></div></div>';
+    ov.innerHTML = '<div class="modal reg-modal"><div class="modal-head"><h3 class="modal-title">Menghubungkan…</h3><button class="btn btn-sm" type="button" id="actClose">Tutup</button></div><div class="modal-body"><pre style="background:#111;color:#0f0;padding:10px;max-height:280px;overflow:auto;font:12px monospace;white-space:pre-wrap;margin:0;" id="actLog"></pre><p id="actStatus" style="margin:10px 0 0;"><span class="spin"></span>Menghubungkan…</p></div></div>';
     document.body.appendChild(ov);
     const log = ov.querySelector('#actLog');
     const statusEl = ov.querySelector('#actStatus');
@@ -390,6 +393,11 @@
               b.textContent = 'Buka halaman izin →';
               b.onclick = () => window.open(o.auth_url, '_blank');
               statusEl.parentNode.insertBefore(b, statusEl.nextSibling);
+              statusEl.innerHTML = '<span class="spin"></span>Menunggu izin di browser — klik "Buka halaman izin" dan selesaikan.';
+            }
+            const lw = log.textContent.toLowerCase();
+            if (!done && lw.includes('paste the redirect url') && lw.includes('address bar')) {
+              statusEl.innerHTML = '<span class="spin"></span>Menunggu menempel URL redirect — buka link izin, izinkan, lalu salin URL address bar & tempel di terminal agent.';
             }
           }
           if (o.finished && !done) {
@@ -423,6 +431,23 @@
     _openModal(ov);
     document.getElementById('noticeOk').onclick = () => history.back();
     ov.onclick = e => { if (e.target === ov) history.back(); };
+  }
+
+  function spinBtn(btn, on) {
+    if (!btn) return;
+    if (on) {
+      if (!btn.dataset.orig) btn.dataset.orig = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spin"></span>Memproses…';
+    } else {
+      btn.disabled = false;
+      if (btn.dataset.orig) { btn.innerHTML = btn.dataset.orig; delete btn.dataset.orig; }
+    }
+  }
+
+  async function runWithSpin(btn, fn) {
+    spinBtn(btn, true);
+    try { await fn(); } finally { spinBtn(btn, false); }
   }
 
   async function apiFetch(endpoint, method = 'GET', body = null) {
@@ -609,7 +634,7 @@ let toolCat = 'all';
     const grid = ov.querySelector('#toolListGrid');
     if (grid) grid.innerHTML = items;
     grid.querySelectorAll('.tl-add').forEach(btn => { btn.onclick = () => openRegisterForm(btn.dataset.tool, ov); });
-    grid.querySelectorAll('.tl-warn').forEach(btn => { btn.onclick = () => startAct(btn.dataset.tool, 'mcp'); });
+    grid.querySelectorAll('.tl-warn').forEach(btn => { btn.onclick = () => { spinBtn(btn, true); startAct(btn.dataset.tool, 'mcp'); setTimeout(() => spinBtn(btn, false), 4000); }; });
     grid.querySelectorAll('.tl-ok').forEach(btn => { btn.onclick = () => openManageModal(btn.dataset.tool, ov); });
     const fbtn = ov.querySelector('#toolFilterBtn');
     if (fbtn) {
@@ -720,7 +745,7 @@ let toolCat = 'all';
     rv.querySelector('#regModalClose').onclick = () => history.back();
     rv.querySelector('#regCancel').onclick = () => history.back();
     rv.onclick = e => { if (e.target === rv) history.back(); };
-    rv.querySelector('#regSave').onclick = async () => {
+    rv.querySelector('#regSave').onclick = () => runWithSpin(rv.querySelector('#regSave'), async () => {
       if (isOauth) { window.open('/api/hermes/tools/oauth/start?provider=' + encodeURIComponent(toolId), '_blank'); return; }
       if (isMcp || isCli) {
         history.back();
@@ -765,7 +790,7 @@ let toolCat = 'all';
           refreshGrid();
         } else showModalNotice(res.error || 'Gagal simpan.');
       } catch (e) { showModalNotice('Gagal: ' + e.message); }
-    };
+    });
   }  const MG_PLUG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></svg>';
   const MG_WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
   function openManageModal(toolId, ov) {
