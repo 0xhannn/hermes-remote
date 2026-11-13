@@ -338,10 +338,9 @@
     ov.innerHTML = '<div class="modal"><div class="modal-body" style="padding:22px 20px;text-align:center;">' +
       '<div style="margin-bottom:16px;color:#1C1917;font-size:14px;line-height:1.5;">' + msg + '</div>' +
       '<button class="btn btn-sm" id="noticeOk" type="button" style="background:#18181B;color:#fff;border:none;border-radius:8px;padding:8px 28px;font-weight:600;cursor:pointer;">Oke</button></div></div>';
-    document.body.appendChild(ov);
-    const close = () => ov.remove();
-    document.getElementById('noticeOk').onclick = close;
-    ov.onclick = e => { if (e.target === ov) close(); };
+    _openModal(ov);
+    document.getElementById('noticeOk').onclick = () => history.back();
+    ov.onclick = e => { if (e.target === ov) history.back(); };
   }
 
   async function apiFetch(endpoint, method = 'GET', body = null) {
@@ -479,11 +478,13 @@
     }
   }
 
+  const _ms = [];
+  function _openModal(el) { _ms.push(el); document.body.appendChild(el); history.pushState({ h: 1 }, ''); }
+  window.addEventListener('popstate', () => { if (_ms.length) _ms.pop().remove(); });
 let toolFilter = 'all';
 
-  function openToolList() {
-    const t = lastTools;
-    if (!t) { showToast('Pindai dulu.'); return; }
+    function _rerenderGrid(ov) {
+    const t = lastTools || [];
     const shown = t.filter(x => {
       if (toolFilter === 'conn') return x.status === 'configured';
       if (toolFilter === 'disconn') return x.status !== 'configured';
@@ -495,20 +496,28 @@ let toolFilter = 'all';
     const items = shown.length
       ? shown.map(x => '<div class="tl-item"><span class="tl-icon">' + toolIconHTML(x.id) + '</span><span class="tl-name">' + escapeHtml(x.name) + '</span>' + statusTxt(x) + '</div>').join('')
       : '<div class="tl-empty">Tidak ada tool dalam filter ini.</div>';
+    const grid = ov.querySelector('#toolListGrid');
+    if (grid) grid.innerHTML = items;
+    grid.querySelectorAll('.tl-add').forEach(btn => { btn.onclick = () => openRegisterForm(btn.dataset.tool, ov); });
+    const fbtn = ov.querySelector('#toolFilterBtn');
+    if (fbtn) fbtn.textContent = 'Filter: ' + (toolFilter === 'conn' ? 'Terhubung' : toolFilter === 'disconn' ? 'Belum terhubung' : 'Semua');
+  }
+
+  function openToolList() {
+    const t = lastTools;
+    if (!t) { showToast('Pindai dulu.'); return; }
     const filterLabel = toolFilter === 'conn' ? 'Terhubung' : toolFilter === 'disconn' ? 'Belum terhubung' : 'Semua';
     const ov = document.createElement('div');
     ov.className = 'overlay'; ov.id = 'toolListOverlay';
     ov.innerHTML = '<div class="modal"><div class="modal-head"><h3>Tool Terdaftar</h3><div class="modal-head-actions">' +
       '<button class="btn btn-sm btn-filter" id="toolFilterBtn" type="button">Filter: ' + filterLabel + '</button>' +
       '<button class="btn btn-sm" id="modalClose">Tutup</button></div></div><div class="modal-body">' +
-      '<div id="toolRegisterSlot"></div><div class="tool-list-grid">' + items + '</div></div></div>';
-    document.body.appendChild(ov);
-    document.getElementById('modalClose').onclick = () => ov.remove();
+      '<div id="toolRegisterSlot"></div><div class="tool-list-grid" id="toolListGrid"></div></div></div>';
+    _openModal(ov);
+    document.getElementById('modalClose').onclick = () => history.back();
     document.getElementById('toolFilterBtn').onclick = () => openFilterModal(ov);
-    ov.onclick = e => { if (e.target === ov) ov.remove(); };
-    ov.querySelectorAll('.tl-add').forEach(btn => {
-      btn.onclick = () => openRegisterForm(btn.dataset.tool, ov);
-    });
+    ov.onclick = e => { if (e.target === ov) history.back(); };
+    _rerenderGrid(ov);
   }
 
   function openFilterModal(ov) {
@@ -521,15 +530,14 @@ let toolFilter = 'all';
     const fov = document.createElement('div');
     fov.className = 'overlay filter-overlay'; fov.id = 'toolFilterOverlay';
     fov.innerHTML = '<div class="modal filter-modal"><div class="modal-head"><h3>Filter Tool</h3><button class="btn btn-sm" id="fClose">Tutup</button></div><div class="modal-body"><div class="opt-list">' + pills + '</div></div></div>';
-    document.body.appendChild(fov);
-    fov.querySelector('#fClose').onclick = () => fov.remove();
-    fov.onclick = e => { if (e.target === fov) fov.remove(); };
+    _openModal(fov);
+    fov.querySelector('#fClose').onclick = () => history.back();
+    fov.onclick = e => { if (e.target === fov) history.back(); };
     fov.querySelectorAll('.opt-pill').forEach(p => {
       p.onclick = () => {
         toolFilter = p.dataset.fk;
-        fov.remove();
-        ov.remove();
-        openToolList();
+        _rerenderGrid(ov);
+        history.back();
       };
     });
   }
@@ -563,7 +571,7 @@ async function openRegisterForm(toolId, ov) {
           const item = lastTools.find(x => x.id === toolId);
           if (item) item.status = 'configured';
           slot.innerHTML = ''; slot.style.display = 'none';
-          ov.remove(); openToolList();
+          _rerenderGrid(ov);
         } else showModalNotice(res.error || 'Gagal simpan.');
       } catch (e) { showModalNotice('Gagal: ' + e.message); }
     };
