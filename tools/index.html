@@ -392,11 +392,18 @@
           }
           if (o.finished && !done) {
             done = true;
-            const st = await apiFetch(stPath, 'POST', { id: toolId });
-            if (st && st.success && (st.configured || st.connected)) {
-              statusEl.textContent = '✓ Terhubung';
+            if (o.rc !== undefined && o.rc !== null && o.rc !== 0) {
+              statusEl.textContent = '✗ Gagal terhubung. Periksa log di atas.';
+              const it = lastTools.find(x => x.id === toolId);
+              if (it) it.status = 'not_detected';
+              if (typeof _rerenderGrid === 'function') _rerenderGrid(_pageOv);
             } else {
-              statusEl.textContent = 'Proses selesai. Koneksi belum aktif — selesaikan izin bila diminta.';
+              const st = await apiFetch(stPath, 'POST', { id: toolId });
+              if (st && st.success && (st.configured || st.connected)) {
+                statusEl.textContent = '✓ Terhubung';
+              } else {
+                statusEl.textContent = 'Proses selesai. Koneksi belum aktif — selesaikan izin bila diminta.';
+              }
             }
             setTimeout(() => { clearInterval(timer); ov.remove(); if (typeof refreshGrid === 'function') refreshGrid(); }, 1600);
           }

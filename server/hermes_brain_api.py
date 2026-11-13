@@ -1145,14 +1145,15 @@ def _job_read(jid, since):
     auth = None
     for ln in new:
         m = re.search(r'(https?://\S+)', ln)
-        if m and any(k in ln.lower() for k in ("authorize", "device", "verification", "code", "log in")):
+        if m:
             u = m.group(1)
             while u and u[-1] in '"\')]}>,;':
                 u = u[:-1]
-            auth = u
+            if any(k in u.lower() for k in ("authorize", "oauth", "device", "verification", "login", "activate")):
+                auth = u
     finished = j["proc"].poll() is not None
     j["len"] = len(parts)
-    return {"lines": new, "finished": finished, "auth_url": auth, "since": len(parts)}
+    return {"lines": new, "finished": finished, "auth_url": auth, "rc": (j["proc"].returncode if finished else None), "since": len(parts)}
 
 
 _JOBS = {}
@@ -1185,14 +1186,15 @@ def _job_read(jid, since):
     auth = None
     for ln in new:
         m = re.search(r'(https?://\S+)', ln)
-        if m and any(k in ln.lower() for k in ("authorize", "device", "verification", "code", "log in")):
+        if m:
             u = m.group(1)
             while u and u[-1] in '"\')]}>,;':
                 u = u[:-1]
-            auth = u
+            if any(k in u.lower() for k in ("authorize", "oauth", "device", "verification", "login", "activate")):
+                auth = u
     finished = j["proc"].poll() is not None
     j["len"] = len(parts)
-    return {"lines": new, "finished": finished, "auth_url": auth, "since": len(parts)}
+    return {"lines": new, "finished": finished, "auth_url": auth, "rc": (j["proc"].returncode if finished else None), "since": len(parts)}
 
 
 def scan_tools():
