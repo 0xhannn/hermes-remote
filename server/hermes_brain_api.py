@@ -1115,6 +1115,24 @@ def _mcp_connected():
         return set()
 
 
+_MCP_TEST_CACHE = {}
+
+
+def _mcp_test(sid):
+    now = time.time()
+    hit = _MCP_TEST_CACHE.get(sid)
+    if hit and now - hit[0] < 30:
+        return hit[1]
+    try:
+        r = subprocess.run(["hermes", "mcp", "test", sid], capture_output=True,
+                            timeout=15, text=True, encoding="utf-8", errors="replace")
+        ok = r.returncode == 0
+    except Exception:
+        ok = False
+    _MCP_TEST_CACHE[sid] = (now, ok)
+    return ok
+
+
 _JOBS = {}
 
 
@@ -1149,7 +1167,10 @@ def _job_read(jid, since):
             u = m.group(1)
             while u and u[-1] in '"\')]}>,;':
                 u = u[:-1]
-            if any(k in u.lower() for k in ("authorize", "oauth", "device", "verification", "login", "activate")):
+            low = u.lower()
+            if ('/docs/' not in low and
+                ('authorize' in low or '/device' in low or 'client_id=' in low
+                 or 'response_type=' in low or 'user_code=' in low or 'code_challenge=' in low)):
                 auth = u
     finished = j["proc"].poll() is not None
     j["len"] = len(parts)
@@ -1190,7 +1211,10 @@ def _job_read(jid, since):
             u = m.group(1)
             while u and u[-1] in '"\')]}>,;':
                 u = u[:-1]
-            if any(k in u.lower() for k in ("authorize", "oauth", "device", "verification", "login", "activate")):
+            low = u.lower()
+            if ('/docs/' not in low and
+                ('authorize' in low or '/device' in low or 'client_id=' in low
+                 or 'response_type=' in low or 'user_code=' in low or 'code_challenge=' in low)):
                 auth = u
     finished = j["proc"].poll() is not None
     j["len"] = len(parts)
@@ -1610,7 +1634,7 @@ def scan_tools():
     _conn = _mcp_connected()
     for t in result:
         if t.get("id") in _MCP_TOOLS:
-            if t["id"] in _conn:
+            if t["id"] in _conn and _mcp_test(t["id"]):
                 t["status"] = "configured"
                 t["source"] = "MCP (%s)" % t["id"]
     _SHORT = {
