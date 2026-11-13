@@ -139,7 +139,11 @@
     @media (min-width: 960px) {
       .tool-list-grid { grid-template-columns: repeat(4, 1fr); }
     }
-    .tl-item { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 14px 12px; border: 1px solid #E5E7EB; border-radius: 10px; background: #fff; min-height: 106px; }
+    .tl-item { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 14px 12px; border: 1px solid #E5E7EB; border-radius: 10px; background: #fff; min-height: 106px; position: relative; }
+    .tl-badge { position: absolute; top: 6px; right: 6px; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; line-height: 1.4; letter-spacing: .2px; }
+    .tl-badge.mcp { background: #E0F2FE; color: #0369A1; }
+    .tl-badge.cli { background: #EDE9FE; color: #5B21B6; }
+    .tl-badge.key { background: #DCFCE7; color: #15803D; }
     .tl-icon { font-size: 26px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
     .tl-name { color: #1C1917; font-weight: 600; font-size: 13px; line-height: 1.3; }
     .tl-act { margin-top: auto; width: 100%; }
@@ -630,7 +634,10 @@ let toolCat = 'all';
         ? '<div class="tl-act" style="display:flex;gap:6px;"><button class="tl-warn" data-tool="' + x.id + '" type="button" style="flex:1;">⚡ Authenticate</button><button class="tl-x" data-tool="' + x.id + '" type="button" aria-label="Batalkan Authenticate" title="Batalkan Authenticate">✕</button></div>'
         : '<div class="tl-act"><button class="tl-add" data-tool="' + x.id + '" type="button">+ Tambah</button></div>';
     const items = shown.length
-      ? shown.map(x => '<div class="tl-item"><span class="tl-icon">' + toolIconHTML(x.id) + '</span><span class="tl-name">' + escapeHtml(x.name) + '</span>' + statusTxt(x) + '</div>').join('')
+      ? shown.map(x => {
+          const m = x.method === 'mcp' ? ['MCP', 'mcp'] : x.method === 'cli' ? ['CLI', 'cli'] : ['KEY', 'key'];
+          return '<div class="tl-item"><span class="tl-badge ' + m[1] + '">' + m[0] + '</span><span class="tl-icon">' + toolIconHTML(x.id) + '</span><span class="tl-name">' + escapeHtml(x.name) + '</span>' + statusTxt(x) + '</div>';
+        }).join('')
       : '<div class="tl-empty">Tidak ada tool dalam filter ini.</div>';
     const grid = ov.querySelector('#toolListGrid');
     if (grid) grid.innerHTML = items;
