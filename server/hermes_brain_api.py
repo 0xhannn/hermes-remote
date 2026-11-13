@@ -1596,6 +1596,16 @@ def scan_tools():
             if t["id"] in _conn:
                 t["status"] = "configured"
                 t["source"] = "MCP (%s)" % t["id"]
+    _SHORT = {
+        "github": "GitHub", "cloudflare": "Cloudflare", "vercel": "Vercel", "tailscale": "Tailscale",
+        "okx": "OKX", "baw": "Binance", "notion": "Notion", "9router": "9Router",
+        "supabase": "Supabase", "neon": "Neon", "whatsapp": "WhatsApp", "telegram": "Telegram",
+        "email": "Email", "instagram": "Instagram", "gdrive": "Google Drive",
+        "helius": "Helius", "fishaudio": "Fish Audio",
+    }
+    for t in result:
+        if t.get("supported") and t.get("id") in _SHORT:
+            t["name"] = _SHORT[t["id"]]
     return result
 def _oauth_apps():
     try:
