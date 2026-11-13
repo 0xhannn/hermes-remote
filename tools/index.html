@@ -311,7 +311,7 @@
         <span class="big"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.7 6.3a4 4 0 0 0-4.9.5l-1.6 1.6a4 4 0 0 0-.5 4.9l-4 4a2.1 2.1 0 0 0 3 3l4-4a4 4 0 0 0 4.9-.5l1.6-1.6a4 4 0 0 0 .5-4.9l3.6-3.6-2.1-2.1-3.5 3.6z"/><circle cx="8.5" cy="15.5" r="1.2"/></svg></span>
         Tekan <strong>Pindai Sekarang</strong> untuk deteksi tool yang terpasang.
       </div>
-      <div class="tool-grid" id="toolGrid"></div>
+      <div class="tool-grid tool-list-grid" id="toolGrid"></div>
     </div>
 
     <footer>localhost:8093 &bull; Hermes Control Center &bull; Agent Gateway</footer>
@@ -326,6 +326,7 @@
   let MASTER_PIN = localStorage.getItem('hermes_pin') || '';
   const scanBtn = document.getElementById('scanBtn');
   const toolGrid = document.getElementById('toolGrid');
+  const _pageOv = { querySelector: s => s === '#toolListGrid' ? toolGrid : null };
   const emptyState = document.getElementById('emptyState');
   const errorBox = document.getElementById('errorBox');
   const scanLabel = document.getElementById('scanLabel');
@@ -382,7 +383,7 @@
             } else {
               statusEl.textContent = 'Proses selesai. Koneksi belum aktif — selesaikan izin bila diminta.';
             }
-            setTimeout(() => { clearInterval(timer); ov.remove(); if (typeof _rerenderGrid === 'function') _rerenderGrid(); }, 1600);
+            setTimeout(() => { clearInterval(timer); ov.remove(); if (typeof _rerenderGrid === 'function') _rerenderGrid(_pageOv); }, 1600);
           }
         } catch (e) {}
       }, 1200);
@@ -494,19 +495,7 @@
       return;
     }
     emptyState.style.display = 'none';
-    const configured = tools.filter(t => t.status === 'configured');
-    if (!configured.length) {
-      toolGrid.innerHTML = '<div class="empty-state" style="display:block"><span class="big"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></span>Belum ada tool terpasang.</div>';
-      return;
-    }
-    toolGrid.innerHTML = configured.map(t => {
-      return '<div class="tool-card">' +
-        '<div class="tool-head">' +
-        '<span class="tool-name">' + toolIconHTML(t.id) + escapeHtml(t.name) + '</span>' +
-        '<span class="tool-badge configured">Terpasang</span>' +
-        '</div>' +
-        '</div>';
-    }).join('');
+    _rerenderGrid(_pageOv);
   }
 
   function escapeHtml(s) {
@@ -549,6 +538,7 @@ let toolCat = 'all';
       if (toolCat !== 'all' && x.category !== toolCat) return false;
       return true;
     });
+    shown.sort((a, b) => (b.status === 'configured' ? 1 : 0) - (a.status === 'configured' ? 1 : 0));
     const statusTxt = x => x.status === 'configured'
       ? '<div class="tl-act"><button class="tl-ok" data-tool="' + x.id + '" type="button">✔ Terhubung</button></div>'
       : '<div class="tl-act"><button class="tl-add" data-tool="' + x.id + '" type="button">+ Tambah</button></div>';
@@ -734,7 +724,15 @@ let toolCat = 'all';
 
 
 
-  listBtn.addEventListener('click', openToolList);
+  listBtn.addEventListener('click', () => { const sp = listBtn.querySelector('span'); if (sp) sp.textContent = 'Filter'; openFilterModal(_pageOv); });
+
+  setInterval(async () => {
+    if (!lastTools || !document.getElementById('toolGrid')) return;
+    try {
+      const res = await apiFetch('tools/scan');
+      if (res.success) renderTools(res.tools, res.scanned_at);
+    } catch (e) {}
+  }, 5000);
 
   async function handleAuth() {
     const pin = document.getElementById('pinInput').value.trim();
