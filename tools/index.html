@@ -160,6 +160,10 @@
     .filter-overlay { z-index: 210; }
     .filter-modal { max-width: 340px; }
     .reg-modal { max-width: 480px; }
+    .conn-title { display: flex; gap: 10px; align-items: center; }
+    .conn-ic { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; }
+    .conn-izink { margin-bottom: 12px; }
+    .conn-link { font-size: 13px; font-weight: 600; color: #2563EB; text-decoration: none; }
     .opt-list { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
     .opt-pill { padding: 10px 12px; border: 1px solid #E5E7EB; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; text-align: left; }
     .opt-pill:hover { background: #F9FAFB; }
@@ -493,7 +497,7 @@ let toolFilter = 'all';
 let toolCat = 'all';
 
     function _rerenderGrid(ov) {
-    const t = lastTools || [];
+    const t = (lastTools || []).filter(x => x.supported);
     const shown = t.filter(x => {
       if (toolFilter === 'conn' && x.status !== 'configured') return false;
       if (toolFilter === 'disconn' && x.status === 'configured') return false;
@@ -574,7 +578,8 @@ let toolCat = 'all';
     const rv = document.createElement('div');
     rv.className = 'overlay'; rv.id = 'toolRegOverlay';
     let html = '<div class="modal reg-modal"><div class="modal-head"><h3>Tambah ' + escapeHtml(meta.name || toolId) + '</h3>' +
-      '<button class="btn btn-sm" id="regModalClose">Tutup</button></div><div class="modal-body">' +
+      '<button class=\"btn btn-sm\" id=\"regModalClose\">Tutup</button></div><div class=\"modal-body\">' +
+      (schema.auth_url ? '<div class=\"conn-izink\"><a class=\"conn-link\" href=\"' + escapeHtml(schema.auth_url) + '\" target=\"_blank\" rel=\"noopener\">Buka halaman izin →</a></div>' : '') +
       '<div class="tl-form">';
     fields.forEach(f => {
       html += '<div><label>' + escapeHtml(f.label || f.key) + '</label><input type="' + (f.type === 'text' ? 'text' : 'password') + '" data-key="' + escapeHtml(f.key) + '" placeholder="Masukkan ' + escapeHtml(f.label || f.key) + '" autocomplete="off"></div>';

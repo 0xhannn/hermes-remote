@@ -1030,34 +1030,36 @@ def _dotenv_map():
 REGISTRY_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tools", "registry.json")
 
 TOOL_SCHEMAS = {
-    "github": {"fields": [{"key": "token", "label": "GitHub OAuth Token", "type": "token"}]},
-    "vercel": {"fields": [{"key": "token", "label": "Vercel Token", "type": "token"}]},
-    "cloudflare": {"fields": [{"key": "api_key", "label": "Cloudflare API Token", "type": "token"}]},
-    "firecrawl": {"fields": [{"key": "api_key", "label": "Firecrawl API Key", "type": "token"}]},
-    "neon": {"fields": [{"key": "api_key", "label": "Neon API Key", "type": "token"}]},
-    "rclone": {"fields": [{"key": "config_path", "label": "Rclone Config Path", "type": "text"},
-                          {"key": "remote", "label": "Remote Name", "type": "text"}]},
-    "notion": {"fields": [{"key": "token", "label": "Notion Integration Token", "type": "token"}]},
-    "9router": {"fields": [{"key": "api_key", "label": "9Router API Key", "type": "token"}]},
-    "openrouter": {"fields": [{"key": "api_key", "label": "OpenRouter API Key", "type": "token"}]},
-    "npm": {"fields": [{"key": "token", "label": "npm Access Token", "type": "token"}]},
+    "github": {"fields": [{"key": "token", "label": "GitHub Personal Access Token", "type": "token"}], "category": "Development", "auth_url": "https://github.com/settings/tokens"},
+    "cloudflare": {"fields": [{"key": "api_key", "label": "Cloudflare API Token", "type": "token"}], "category": "Infrastructure", "auth_url": "https://dash.cloudflare.com/profile/api-tokens"},
+    "vercel": {"fields": [{"key": "token", "label": "Vercel Token", "type": "token"}], "category": "Development", "auth_url": "https://vercel.com/account/tokens"},
+    "tailscale": {"fields": [{"key": "api_key", "label": "Tailscale API Key", "type": "token"}], "category": "Infrastructure", "auth_url": "https://login.tailscale.com/admin/settings/keys"},
+    "okx": {"fields": [{"key": "api_key", "label": "OKX API Key", "type": "token"}, {"key": "secret", "label": "OKX Secret", "type": "token"}, {"key": "passphrase", "label": "OKX Passphrase", "type": "token"}], "category": "Finance", "auth_url": "https://www.okx.com/account/my-api"},
+    "baw": {"fields": [{"key": "api_key", "label": "Binance Agentic Wallet Key", "type": "token"}], "category": "Finance", "auth_url": "https://www.binance.com"},
+    "notion": {"fields": [{"key": "token", "label": "Notion Integration Token", "type": "token"}], "category": "Productivity", "auth_url": "https://www.notion.so/my-integrations"},
+    "9router": {"fields": [{"key": "api_key", "label": "9Router API Key", "type": "token"}], "category": "AI"},
+    "supabase": {"fields": [{"key": "service_key", "label": "Supabase Service Key", "type": "token"}], "category": "Data", "auth_url": "https://supabase.com/dashboard"},
+    "neon": {"fields": [{"key": "api_key", "label": "Neon API Key", "type": "token"}], "category": "Data", "auth_url": "https://console.neon.tech/settings/api-keys"},
+    "whatsapp": {"fields": [{"key": "session", "label": "WhatsApp Session Path", "type": "text"}], "category": "Communication"},
+    "telegram": {"fields": [{"key": "bot_token", "label": "Telegram Bot Token", "type": "token"}, {"key": "api_id", "label": "MTProto API ID", "type": "text"}, {"key": "api_hash", "label": "MTProto API Hash", "type": "token"}], "category": "Communication", "auth_url": "https://my.telegram.org"},
+    "email": {"fields": [{"key": "smtp_host", "label": "SMTP Host", "type": "text"}, {"key": "smtp_user", "label": "SMTP User", "type": "text"}, {"key": "smtp_pass", "label": "SMTP Password", "type": "token"}, {"key": "imap_user", "label": "IMAP User", "type": "text"}, {"key": "imap_pass", "label": "IMAP Password", "type": "token"}], "category": "Communication"},
+    "instagram": {"fields": [{"key": "token", "label": "Instagram Graph API Token", "type": "token"}], "category": "Social", "auth_url": "https://developers.facebook.com/apps"},
+    "gdrive": {"fields": [{"key": "service_account", "label": "Google Service Account JSON Path", "type": "text"}, {"key": "client_email", "label": "Client Email", "type": "text"}], "category": "Storage", "auth_url": "https://console.cloud.google.com/iam-admin/serviceaccounts"},
+    "helius": {"fields": [{"key": "api_key", "label": "Helius API Key", "type": "token"}], "category": "Finance", "auth_url": "https://dashboard.helius.dev"},
+    "fishaudio": {"fields": [{"key": "api_key", "label": "Fish Audio API Key", "type": "token"}], "category": "Media", "auth_url": "https://fish.audio/dashboard"},
 }
 
-def _schema_for_env(tid, tname, envkeys):
-    if envkeys:
-        return {"fields": [{"key": ek.lower().replace("_", ""), "label": tname + " " + ek, "type": "token"} for ek in envkeys]}
-    return {"fields": [{"key": "api_key", "label": (tname or tid) + " API Key", "type": "token"}]}
+_TOOL_NAMES = {
+    "github": "GitHub", "cloudflare": "Cloudflare", "vercel": "Vercel", "tailscale": "Tailscale",
+    "okx": "OKX Onchain OS", "baw": "Binance Agentic Wallet", "notion": "Notion", "9router": "9Router",
+    "supabase": "Supabase", "neon": "Neon", "whatsapp": "WhatsApp Gateway", "telegram": "Telegram",
+    "email": "Email Services", "instagram": "Instagram Graph API", "gdrive": "Google Drive", "helius": "Helius",
+    "fishaudio": "Fish Audio",
+}
 
 def _tool_schemas():
-    sc = dict(TOOL_SCHEMAS)
-    try:
-        for tool in scan_tools():
-            tid = tool.get("id")
-            if tid and tid not in sc:
-                sc[tid] = _schema_for_env(tid, tool.get("name") or tid, [])
-    except Exception:
-        pass
-    return sc
+    return {tid: {"fields": cfg["fields"], "auth_url": cfg.get("auth_url")}
+            for tid, cfg in TOOL_SCHEMAS.items()}
 
 def _load_registry():
     try:
@@ -1466,13 +1468,22 @@ def scan_tools():
     except Exception:
         pass
 
-    _cats = {
-        "github": "Development", "vercel": "Development", "npm": "Development",
-        "cloudflare": "Infrastructure", "rclone": "Storage", "notion": "Productivity",
-        "firecrawl": "Research", "neon": "Data", "9router": "AI", "openrouter": "AI",
-    }
+    cats_of = {tid: cfg.get("category", "Lainnya") for tid, cfg in TOOL_SCHEMAS.items()}
     for tool in result:
-        tool["category"] = _cats.get(tool.get("id"), "Lainnya")
+        tool["category"] = cats_of.get(tool.get("id"), "Lainnya")
+        tool["supported"] = tool.get("id") in cats_of
+    seen = {x.get("id") for x in result}
+    for tid, cfg in TOOL_SCHEMAS.items():
+        if tid not in seen:
+            result.append({
+                "id": tid,
+                "name": _TOOL_NAMES.get(tid, tid),
+                "status": "not_detected",
+                "source": "",
+                "credential": None,
+                "category": cfg.get("category", "Lainnya"),
+                "supported": True,
+            })
 
     return result
 
