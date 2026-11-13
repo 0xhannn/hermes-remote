@@ -150,6 +150,7 @@
     .spin { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(128,128,128,.3); border-top-color: currentColor; border-radius: 50%; animation: spin .6s linear infinite; vertical-align: -2px; margin-right: 5px; }
     @keyframes spin { to { transform: rotate(360deg); } }
     button:disabled { cursor: progress; opacity: .75; }
+    .tl-x { width: 32px; padding: 7px 0; border: none; border-radius: 8px; background: #FEE2E2; color: #B91C1C; font-weight: 700; font-size: 12.5px; cursor: pointer; flex: none; }
     .tl-form { display: flex; flex-direction: column; gap: 12px; padding: 8px 0 12px; border-bottom: 1px solid #E5E7EB; margin-bottom: 10px; }
     .tl-form > div { display: flex; flex-direction: column; gap: 6px; }
     .tl-form label { font-size: 12px; color: #57534E; }
@@ -626,7 +627,7 @@ let toolCat = 'all';
     const statusTxt = x => x.status === 'configured'
       ? '<div class="tl-act"><button class="tl-ok" data-tool="' + x.id + '" type="button">✔ Terhubung</button></div>'
       : x.status === 'needs_auth'
-        ? '<div class="tl-act"><button class="tl-warn" data-tool="' + x.id + '" type="button">⚡ Authenticate</button></div>'
+        ? '<div class="tl-act" style="display:flex;gap:6px;"><button class="tl-warn" data-tool="' + x.id + '" type="button" style="flex:1;">⚡ Authenticate</button><button class="tl-x" data-tool="' + x.id + '" type="button" aria-label="Batalkan Authenticate" title="Batalkan Authenticate">✕</button></div>'
         : '<div class="tl-act"><button class="tl-add" data-tool="' + x.id + '" type="button">+ Tambah</button></div>';
     const items = shown.length
       ? shown.map(x => '<div class="tl-item"><span class="tl-icon">' + toolIconHTML(x.id) + '</span><span class="tl-name">' + escapeHtml(x.name) + '</span>' + statusTxt(x) + '</div>').join('')
@@ -635,6 +636,16 @@ let toolCat = 'all';
     if (grid) grid.innerHTML = items;
     grid.querySelectorAll('.tl-add').forEach(btn => { btn.onclick = () => openRegisterForm(btn.dataset.tool, ov); });
     grid.querySelectorAll('.tl-warn').forEach(btn => { btn.onclick = () => { spinBtn(btn, true); startAct(btn.dataset.tool, 'mcp'); setTimeout(() => spinBtn(btn, false), 4000); }; });
+    grid.querySelectorAll('.tl-x').forEach(btn => { btn.onclick = async () => {
+      const id = btn.dataset.tool;
+      btn.disabled = true; btn.textContent = '…';
+      try {
+        const res = await apiFetch('tools/mcp/remove', 'POST', { id });
+        if (!res.success) showModalNotice(res.error || 'Gagal batalkan Authenticate.');
+        else refreshGrid();
+      } catch (e) { showModalNotice('Gagal batalkan: ' + e.message); }
+      finally { btn.disabled = false; btn.textContent = '✕'; }
+    }; });
     grid.querySelectorAll('.tl-ok').forEach(btn => { btn.onclick = () => openManageModal(btn.dataset.tool, ov); });
     const fbtn = ov.querySelector('#toolFilterBtn');
     if (fbtn) {

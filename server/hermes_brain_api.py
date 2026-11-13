@@ -2368,6 +2368,22 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
                 return self._send_json(200, {"success": True, "configured": False, "needs_auth": True})
             return self._send_json(200, {"success": True, "configured": connected})
 
+        if path == "/api/hermes/tools/mcp/remove":
+            tid = body.get("id")
+            if not isinstance(tid, str):
+                return self._send_json(400, {"success": False, "error": "bad payload: {id} required"})
+            if tid not in _MCP_TOOLS:
+                return self._send_json(404, {"success": False, "error": "bukan tool MCP"})
+            cat = _MCP_TOOLS[tid]
+            _MCP_TEST_CACHE.pop(tid, None)
+            _MCP_CACHE["t"] = 0
+            try:
+                r = __import__("subprocess").run(["hermes", "mcp", "remove", cat], capture_output=True, timeout=30, text=True, encoding="utf-8", errors="replace")
+            except Exception as e:
+                return self._send_json(500, {"success": False, "error": str(e)})
+            ok = r.returncode == 0
+            return self._send_json(200, {"success": ok, "id": tid, "error": None if ok else ((r.stderr or r.stdout or "").strip()[-300:])})
+
         if path == "/api/hermes/tools/act":
             tid = body.get("id")
             if not isinstance(tid, str):
