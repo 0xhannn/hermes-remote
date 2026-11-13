@@ -130,8 +130,8 @@
     @media (min-width: 768px) {
       .tool-grid { grid-template-columns: repeat(2, 1fr); }
     }
-    .overlay { position: fixed; inset: 0; background: rgba(15,23,42,.55); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 16px; }
-    .modal { background: #fff; border-radius: 12px; width: 100%; max-width: 780px; max-height: 82vh; display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(0,0,0,.25); }
+    .overlay { position: fixed; inset: 0; background: rgba(15,23,42,.55); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 16px; animation: omIn .2s ease-out; }
+    .modal { background: #fff; border-radius: 12px; width: 100%; max-width: 780px; max-height: 82vh; display: flex; flex-direction: column; box-shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.12); animation: mmIn .2s ease-out; }
     .modal-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid #E5E7EB; }
     .modal-head h3 { font-size: 15px; margin: 0; }
     .modal-body { overflow: auto; padding: 12px 16px 16px; }
@@ -258,7 +258,11 @@
       color: var(--text-muted);
       text-align: center;
     }
-  </style>
+  
+@keyframes mmIn { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes omIn { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .modal, .overlay { animation: none; } }
+</style>
   <link rel="stylesheet" href="/assets/ui-enhancements.css?v=7">
 </head>
 <body>
@@ -532,8 +536,35 @@
   }
 
   const _ms = [];
-  function _openModal(el) { _ms.push(el); document.body.appendChild(el); history.pushState({ h: 1 }, ''); }
-  window.addEventListener('popstate', () => { if (_ms.length) _ms.pop().remove(); });
+  let _lastFocus = null;
+  function _focusFallback() {
+    const g = document.getElementById('toolGrid');
+    if (g) { const b = g.querySelector('button'); if (b) b.focus(); else g.focus(); }
+    else document.body.focus();
+  }
+  function _openModal(el) {
+    const dlg = el.querySelector('.modal');
+    if (dlg) { dlg.setAttribute('role', 'dialog'); dlg.setAttribute('aria-modal', 'true'); }
+    _lastFocus = document.activeElement;
+    _ms.push(el); document.body.appendChild(el);
+    const f = el.querySelector('button'); if (f) f.focus();
+    el.addEventListener('keydown', ev => {
+      if (ev.key === 'Escape') { ev.preventDefault(); history.back(); return; }
+      if (ev.key !== 'Tab' || !_ms.length) return;
+      const bs = Array.from(el.querySelectorAll('button'));
+      if (!bs.length) return;
+      const first = bs[0], last = bs[bs.length - 1];
+      if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); last.focus(); }
+      else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first.focus(); }
+    });
+    history.pushState({ h: 1 }, '');
+  }
+  window.addEventListener('popstate', () => {
+    if (!_ms.length) return;
+    _ms.pop().remove();
+    if (_lastFocus && document.body.contains(_lastFocus)) _lastFocus.focus();
+    else _focusFallback();
+  });
 let toolFilter = 'all';
 let toolCat = 'all';
 
