@@ -158,6 +158,8 @@
     .opt-pill { padding: 10px 12px; border: 1px solid #E5E7EB; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; text-align: left; }
     .opt-pill:hover { background: #F9FAFB; }
     .opt-pill.active { border-color: #2563EB; background: #EFF6FF; color: #2563EB; }
+    .opt-group { margin-bottom: 14px; }
+    .opt-label { font-size: 12px; color: #6B7280; font-weight: 600; margin-bottom: 8px; }
     .tl-empty { grid-column: 1 / -1; text-align: center; color: #78716C; padding: 22px; font-size: 13px; }
     .tool-card {
       background: var(--card-bg);
@@ -482,12 +484,14 @@
   function _openModal(el) { _ms.push(el); document.body.appendChild(el); history.pushState({ h: 1 }, ''); }
   window.addEventListener('popstate', () => { if (_ms.length) _ms.pop().remove(); });
 let toolFilter = 'all';
+let toolCat = 'all';
 
     function _rerenderGrid(ov) {
     const t = lastTools || [];
     const shown = t.filter(x => {
-      if (toolFilter === 'conn') return x.status === 'configured';
-      if (toolFilter === 'disconn') return x.status !== 'configured';
+      if (toolFilter === 'conn' && x.status !== 'configured') return false;
+      if (toolFilter === 'disconn' && x.status === 'configured') return false;
+      if (toolCat !== 'all' && x.category !== toolCat) return false;
       return true;
     });
     const statusTxt = x => x.status === 'configured'
@@ -500,7 +504,11 @@ let toolFilter = 'all';
     if (grid) grid.innerHTML = items;
     grid.querySelectorAll('.tl-add').forEach(btn => { btn.onclick = () => openRegisterForm(btn.dataset.tool, ov); });
     const fbtn = ov.querySelector('#toolFilterBtn');
-    if (fbtn) fbtn.textContent = 'Filter: ' + (toolFilter === 'conn' ? 'Terhubung' : toolFilter === 'disconn' ? 'Belum terhubung' : 'Semua');
+    if (fbtn) {
+      const st = toolFilter === 'conn' ? 'Terhubung' : toolFilter === 'disconn' ? 'Belum terhubung' : 'Semua';
+      const ct = toolCat === 'all' ? '' : toolCat;
+      fbtn.textContent = 'Filter: ' + (ct ? (st === 'Semua' ? ct : st + ' · ' + ct) : st);
+    }
   }
 
   function openToolList() {
@@ -520,24 +528,30 @@ let toolFilter = 'all';
     _rerenderGrid(ov);
   }
 
-  function openFilterModal(ov) {
-    const opts = [
+    function openFilterModal(ov) {
+    const sOpts = [
       { k: 'all', l: 'Semua' },
       { k: 'conn', l: 'Terhubung' },
       { k: 'disconn', l: 'Belum terhubung' }
     ];
-    const pills = opts.map(o => '<div class="opt-pill' + (o.k === toolFilter ? ' active' : '') + '" data-fk="' + o.k + '">' + o.l + '</div>').join('');
+    const cats = Array.from(new Set((lastTools || []).map(x => x.category).filter(Boolean)));
+    const cOpts = [{ k: 'all', l: 'Semua' }].concat(cats.map(c => ({ k: c, l: c })));
+    const statusPills = sOpts.map(o => '<div class="opt-pill' + (o.k === toolFilter ? ' active' : '') + '" data-fk="' + o.k + '" data-grp="st">' + o.l + '</div>').join('');
+    const catPills = cOpts.map(o => '<div class="opt-pill' + (o.k === toolCat ? ' active' : '') + '" data-fk="' + o.k + '" data-grp="cat">' + escapeHtml(o.l) + '</div>').join('');
     const fov = document.createElement('div');
     fov.className = 'overlay filter-overlay'; fov.id = 'toolFilterOverlay';
-    fov.innerHTML = '<div class="modal filter-modal"><div class="modal-head"><h3>Filter Tool</h3><button class="btn btn-sm" id="fClose">Tutup</button></div><div class="modal-body"><div class="opt-list">' + pills + '</div></div></div>';
+    fov.innerHTML = '<div class="modal filter-modal"><div class="modal-head"><h3>Filter Tool</h3><button class="btn btn-sm" id="fClose">Tutup</button></div>' +
+      '<div class="modal-body"><div class="opt-group"><div class="opt-label">Status</div><div class="opt-list">' + statusPills + '</div></div>' +
+      '<div class="opt-group"><div class="opt-label">Kategori</div><div class="opt-list">' + catPills + '</div></div></div></div>';
     _openModal(fov);
     fov.querySelector('#fClose').onclick = () => history.back();
     fov.onclick = e => { if (e.target === fov) history.back(); };
     fov.querySelectorAll('.opt-pill').forEach(p => {
       p.onclick = () => {
-        toolFilter = p.dataset.fk;
+        const grp = p.dataset.grp;
+        if (grp === 'cat') toolCat = p.dataset.fk; else toolFilter = p.dataset.fk;
+        fov.querySelectorAll('.opt-pill[data-grp="' + grp + '"]').forEach(x => x.classList.toggle('active', x === p));
         _rerenderGrid(ov);
-        history.back();
       };
     });
   }

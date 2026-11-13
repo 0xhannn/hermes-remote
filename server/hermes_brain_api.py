@@ -1466,6 +1466,14 @@ def scan_tools():
     except Exception:
         pass
 
+    _cats = {
+        "github": "Development", "vercel": "Development", "npm": "Development",
+        "cloudflare": "Infrastructure", "rclone": "Storage", "notion": "Productivity",
+        "firecrawl": "Research", "neon": "Data", "9router": "AI", "openrouter": "AI",
+    }
+    for tool in result:
+        tool["category"] = _cats.get(tool.get("id"), "Lainnya")
+
     return result
 
 
