@@ -154,6 +154,7 @@
     .tl-form .btn { padding: 7px 12px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 13px; }
     .tl-form .btn-primary { background: #18181B; color: #fff; flex: 1; }
     .tl-form .btn-sec { background: #F3F4F6; color: #111827; }
+    .tl-form .btn-danger { background: #DC2626; color: #fff; }
     .modal-head-actions { display: flex; gap: 8px; align-items: center; }
     .btn-filter { background: #F3F4F6; color: #111827; }
     .filter-overlay { z-index: 210; }
@@ -500,7 +501,7 @@ let toolCat = 'all';
       return true;
     });
     const statusTxt = x => x.status === 'configured'
-      ? '<div class="tl-act"><button class="tl-ok" disabled>✔ Terhubung</button></div>'
+      ? '<div class="tl-act"><button class="tl-ok" data-tool="' + x.id + '" type="button">✔ Terhubung</button></div>'
       : '<div class="tl-act"><button class="tl-add" data-tool="' + x.id + '" type="button">+ Tambah</button></div>';
     const items = shown.length
       ? shown.map(x => '<div class="tl-item"><span class="tl-icon">' + toolIconHTML(x.id) + '</span><span class="tl-name">' + escapeHtml(x.name) + '</span>' + statusTxt(x) + '</div>').join('')
@@ -508,6 +509,7 @@ let toolCat = 'all';
     const grid = ov.querySelector('#toolListGrid');
     if (grid) grid.innerHTML = items;
     grid.querySelectorAll('.tl-add').forEach(btn => { btn.onclick = () => openRegisterForm(btn.dataset.tool, ov); });
+    grid.querySelectorAll('.tl-ok').forEach(btn => { btn.onclick = () => openManageModal(btn.dataset.tool, ov); });
     const fbtn = ov.querySelector('#toolFilterBtn');
     if (fbtn) {
       const st = toolFilter === 'conn' ? 'Terhubung' : toolFilter === 'disconn' ? 'Belum terhubung' : 'Semua';
@@ -599,7 +601,35 @@ let toolCat = 'all';
         } else showModalNotice(res.error || 'Gagal simpan.');
       } catch (e) { showModalNotice('Gagal: ' + e.message); }
     };
+  }  function openManageModal(toolId, ov) {
+    const item = lastTools.find(x => x.id === toolId) || {};
+    const mv = document.createElement('div');
+    mv.className = 'overlay'; mv.id = 'toolManageOverlay';
+    mv.innerHTML = '<div class="modal reg-modal"><div class="modal-head"><h3>Kelola ' + escapeHtml(item.name || toolId) + '</h3>' +
+      '<button class="btn btn-sm" id="mgClose">Tutup</button></div><div class="modal-body">' +
+      '<div class="tl-form"><div><label>Status</label><input type="text" value="Terhubung" readonly></div>' +
+      '<div><label>Sumber Kredensial</label><input type="text" value="' + escapeHtml(item.source || 'tools/registry.json') + '" readonly></div>' +
+      '<div class="row"><button class="btn btn-sec" id="mgCancel" type="button">Batal</button>' +
+      '<button class="btn btn-danger" id="mgDisconnect" type="button">Putuskan Sambungan</button></div></div></div></div>';
+    _openModal(mv);
+    mv.querySelector('#mgClose').onclick = () => history.back();
+    mv.querySelector('#mgCancel').onclick = () => history.back();
+    mv.onclick = e => { if (e.target === mv) history.back(); };
+    mv.querySelector('#mgDisconnect').onclick = async () => {
+      try {
+        const res = await apiFetch('tools/disconnect', 'POST', { id: toolId });
+        if (res.success) {
+          showToast((item.name || toolId) + ' diputuskan.');
+          const it = lastTools.find(x => x.id === toolId);
+          if (it) it.status = 'not_detected';
+          history.back();
+          _rerenderGrid(ov);
+        } else showModalNotice(res.error || 'Gagal memutuskan.');
+      } catch (e) { showModalNotice('Gagal: ' + e.message); }
+    };
   }
+
+
 
   listBtn.addEventListener('click', openToolList);
 

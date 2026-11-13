@@ -2049,6 +2049,19 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 return self._send_json(500, {"success": False, "error": str(e)})
 
+        if path == "/api/hermes/tools/disconnect":
+            try:
+                tid = body.get("id")
+                if not isinstance(tid, str):
+                    return self._send_json(400, {"success": False, "error": "bad payload: {id} required"})
+                reg = _load_registry()
+                if tid in reg:
+                    del reg[tid]
+                    _save_registry(reg)
+                return self._send_json(200, {"success": True, "id": tid})
+            except Exception as e:
+                return self._send_json(500, {"success": False, "error": str(e)})
+
         if path == "/api/hermes/auth/logout":
             expired = "hermes_pin=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"
             return self._send_json(200, {"success": True, "message": "Logout OK"}, set_cookie=expired)
