@@ -2201,8 +2201,8 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
                 return self._send_json(404, {"success": False, "error": "bukan tool MCP"})
             cat = _MCP_TOOLS[tid]
             try:
-                Popen(["hermes", "mcp", "add", cat], stdout=DEVNULL, stderr=DEVNULL)
-                Popen(["hermes", "mcp", "login", cat], stdout=DEVNULL, stderr=DEVNULL)
+                __import__("subprocess").Popen(["hermes", "mcp", "install", cat], stdout=__import__("subprocess").DEVNULL, stderr=__import__("subprocess").DEVNULL)
+                __import__("subprocess").Popen('start "MCP Login - %s" cmd /k hermes mcp login %s' % (cat, cat), shell=True)
             except Exception as e:
                 return self._send_json(500, {"success": False, "error": str(e)})
             return self._send_json(200, {"success": True, "id": tid})
