@@ -134,15 +134,15 @@
     .modal { background: #fff; border-radius: 12px; width: 100%; max-width: 560px; max-height: 72vh; display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(0,0,0,.25); }
     .modal-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid #E5E7EB; }
     .modal-head h3 { font-size: 15px; margin: 0; }
-    .modal-body { overflow: auto; padding: 8px 16px 16px; }
-    .tool-list-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
-    .tl-item { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 12px 8px; border: 1px solid #E5E7EB; border-radius: 10px; background: #fff; min-height: 92px; }
-    .tl-icon { font-size: 24px; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; }
-    .tl-name { color: #1C1917; font-weight: 600; font-size: 12.5px; line-height: 1.25; }
+    .modal-body { overflow: auto; padding: 12px 16px 16px; }
+    .tool-list-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+    .tl-item { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 14px 12px; border: 1px solid #E5E7EB; border-radius: 10px; background: #fff; min-height: 106px; }
+    .tl-icon { font-size: 26px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
+    .tl-name { color: #1C1917; font-weight: 600; font-size: 13px; line-height: 1.3; }
     .tl-act { margin-top: auto; width: 100%; }
-    .tl-add { width: 100%; padding: 5px 8px; border: none; border-radius: 7px; background: #F3F4F6; color: #111827; font-weight: 600; font-size: 12.5px; cursor: pointer; }
+    .tl-add { width: 100%; padding: 7px 8px; border: none; border-radius: 8px; background: #F3F4F6; color: #111827; font-weight: 600; font-size: 12.5px; cursor: pointer; }
     .tl-add:hover { background: #E5E7EB; }
-    .tl-ok { width: 100%; padding: 5px 8px; border: none; border-radius: 7px; background: #DCFCE7; color: #15803D; font-weight: 700; font-size: 12.5px; display: flex; align-items: center; justify-content: center; gap: 4px; }
+    .tl-ok { width: 100%; padding: 7px 8px; border: none; border-radius: 8px; background: #DCFCE7; color: #15803D; font-weight: 700; font-size: 12.5px; display: flex; align-items: center; justify-content: center; gap: 4px; }
     .tl-form { display: flex; flex-direction: column; gap: 8px; padding: 8px 0 12px; border-bottom: 1px solid #E5E7EB; margin-bottom: 10px; }
     .tl-form label { font-size: 12px; color: #57534E; }
     .tl-form input { padding: 7px 9px; border: 1px solid #D6D3D1; border-radius: 8px; font-size: 13px; width: 100%; box-sizing: border-box; }
@@ -150,6 +150,15 @@
     .tl-form .btn { padding: 7px 12px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 13px; }
     .tl-form .btn-primary { background: #18181B; color: #fff; flex: 1; }
     .tl-form .btn-sec { background: #F3F4F6; color: #111827; }
+    .modal-head-actions { display: flex; gap: 8px; align-items: center; }
+    .btn-filter { background: #F3F4F6; color: #111827; }
+    .filter-overlay { z-index: 210; }
+    .filter-modal { max-width: 340px; }
+    .opt-list { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
+    .opt-pill { padding: 10px 12px; border: 1px solid #E5E7EB; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; text-align: left; }
+    .opt-pill:hover { background: #F9FAFB; }
+    .opt-pill.active { border-color: #2563EB; background: #EFF6FF; color: #2563EB; }
+    .tl-empty { grid-column: 1 / -1; text-align: center; color: #78716C; padding: 22px; font-size: 13px; }
     .tool-card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
@@ -300,6 +309,7 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="/assets/auth-guard.js"></script>
 <script>
   let MASTER_PIN = localStorage.getItem('hermes_pin') || '';
   const scanBtn = document.getElementById('scanBtn');
@@ -321,6 +331,18 @@
     errorBox.style.display = 'block';
   }
   function hideNotice() { errorBox.style.display = 'none'; }
+
+  function showModalNotice(msg) {
+    const ov = document.createElement('div');
+    ov.className = 'overlay'; ov.id = 'toolNoticeOverlay';
+    ov.innerHTML = '<div class="modal"><div class="modal-body" style="padding:22px 20px;text-align:center;">' +
+      '<div style="margin-bottom:16px;color:#1C1917;font-size:14px;line-height:1.5;">' + msg + '</div>' +
+      '<button class="btn btn-sm" id="noticeOk" type="button" style="background:#18181B;color:#fff;border:none;border-radius:8px;padding:8px 28px;font-weight:600;cursor:pointer;">Oke</button></div></div>';
+    document.body.appendChild(ov);
+    const close = () => ov.remove();
+    document.getElementById('noticeOk').onclick = close;
+    ov.onclick = e => { if (e.target === ov) close(); };
+  }
 
   async function apiFetch(endpoint, method = 'GET', body = null) {
     const opts = {
@@ -457,24 +479,58 @@
     }
   }
 
+let toolFilter = 'all';
+
   function openToolList() {
     const t = lastTools;
     if (!t) { showToast('Pindai dulu.'); return; }
+    const shown = t.filter(x => {
+      if (toolFilter === 'conn') return x.status === 'configured';
+      if (toolFilter === 'disconn') return x.status !== 'configured';
+      return true;
+    });
     const statusTxt = x => x.status === 'configured'
       ? '<div class="tl-act"><button class="tl-ok" disabled>✔ Terhubung</button></div>'
       : '<div class="tl-act"><button class="tl-add" data-tool="' + x.id + '" type="button">+ Tambah</button></div>';
-    const items = t.map(x =>
-      '<div class="tl-item"><span class="tl-icon">' + toolIconHTML(x.id) + '</span><span class="tl-name">' + escapeHtml(x.name) + '</span>' + statusTxt(x) + '</div>'
-    ).join('');
+    const items = shown.length
+      ? shown.map(x => '<div class="tl-item"><span class="tl-icon">' + toolIconHTML(x.id) + '</span><span class="tl-name">' + escapeHtml(x.name) + '</span>' + statusTxt(x) + '</div>').join('')
+      : '<div class="tl-empty">Tidak ada tool dalam filter ini.</div>';
+    const filterLabel = toolFilter === 'conn' ? 'Terhubung' : toolFilter === 'disconn' ? 'Belum terhubung' : 'Semua';
     const ov = document.createElement('div');
     ov.className = 'overlay'; ov.id = 'toolListOverlay';
-    ov.innerHTML = '<div class="modal"><div class="modal-head"><h3>Tool Terdaftar</h3><button class="btn btn-sm" id="modalClose">Tutup</button></div><div class="modal-body">' +
+    ov.innerHTML = '<div class="modal"><div class="modal-head"><h3>Tool Terdaftar</h3><div class="modal-head-actions">' +
+      '<button class="btn btn-sm btn-filter" id="toolFilterBtn" type="button">Filter: ' + filterLabel + '</button>' +
+      '<button class="btn btn-sm" id="modalClose">Tutup</button></div></div><div class="modal-body">' +
       '<div id="toolRegisterSlot"></div><div class="tool-list-grid">' + items + '</div></div></div>';
     document.body.appendChild(ov);
     document.getElementById('modalClose').onclick = () => ov.remove();
+    document.getElementById('toolFilterBtn').onclick = () => openFilterModal(ov);
     ov.onclick = e => { if (e.target === ov) ov.remove(); };
     ov.querySelectorAll('.tl-add').forEach(btn => {
       btn.onclick = () => openRegisterForm(btn.dataset.tool, ov);
+    });
+  }
+
+  function openFilterModal(ov) {
+    const opts = [
+      { k: 'all', l: 'Semua' },
+      { k: 'conn', l: 'Terhubung' },
+      { k: 'disconn', l: 'Belum terhubung' }
+    ];
+    const pills = opts.map(o => '<div class="opt-pill' + (o.k === toolFilter ? ' active' : '') + '" data-fk="' + o.k + '">' + o.l + '</div>').join('');
+    const fov = document.createElement('div');
+    fov.className = 'overlay filter-overlay'; fov.id = 'toolFilterOverlay';
+    fov.innerHTML = '<div class="modal filter-modal"><div class="modal-head"><h3>Filter Tool</h3><button class="btn btn-sm" id="fClose">Tutup</button></div><div class="modal-body"><div class="opt-list">' + pills + '</div></div></div>';
+    document.body.appendChild(fov);
+    fov.querySelector('#fClose').onclick = () => fov.remove();
+    fov.onclick = e => { if (e.target === fov) fov.remove(); };
+    fov.querySelectorAll('.opt-pill').forEach(p => {
+      p.onclick = () => {
+        toolFilter = p.dataset.fk;
+        fov.remove();
+        ov.remove();
+        openToolList();
+      };
     });
   }
 async function openRegisterForm(toolId, ov) {
@@ -499,7 +555,7 @@ async function openRegisterForm(toolId, ov) {
     document.getElementById('regSave').onclick = async () => {
       const payload = {};
       fields.forEach(f => { const el = slot.querySelector('[data-key="' + f.key + '"]'); payload[f.key] = el ? el.value.trim() : ''; });
-      if (Object.values(payload).some(v => !v)) { showToast('Isi semua field dulu.'); return; }
+      if (Object.values(payload).some(v => !v)) { showModalNotice('Isi semua field dulu.'); return; }
       try {
         const res = await apiFetch('tools/register', 'POST', { id: toolId, fields: payload });
         if (res.success) {
@@ -508,8 +564,8 @@ async function openRegisterForm(toolId, ov) {
           if (item) item.status = 'configured';
           slot.innerHTML = ''; slot.style.display = 'none';
           ov.remove(); openToolList();
-        } else showToast(res.error || 'Gagal simpan.');
-      } catch (e) { showToast('Gagal: ' + e.message); }
+        } else showModalNotice(res.error || 'Gagal simpan.');
+      } catch (e) { showModalNotice('Gagal: ' + e.message); }
     };
   }
 
@@ -560,7 +616,6 @@ async function openRegisterForm(toolId, ov) {
   }
 </script>
 
-<script src="/assets/auth-guard.js"></script>
 <script src="/assets/ui-enhancements.js?v=2"></script>
 </body>
 </html>
