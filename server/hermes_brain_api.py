@@ -1146,7 +1146,10 @@ def _job_read(jid, since):
     for ln in new:
         m = re.search(r'(https?://\S+)', ln)
         if m and any(k in ln.lower() for k in ("authorize", "device", "verification", "code", "log in")):
-            auth = m.group(1)
+            u = m.group(1)
+            while u and u[-1] in '"\')]}>,;':
+                u = u[:-1]
+            auth = u
     finished = j["proc"].poll() is not None
     j["len"] = len(parts)
     return {"lines": new, "finished": finished, "auth_url": auth, "since": len(parts)}
@@ -1183,7 +1186,10 @@ def _job_read(jid, since):
     for ln in new:
         m = re.search(r'(https?://\S+)', ln)
         if m and any(k in ln.lower() for k in ("authorize", "device", "verification", "code", "log in")):
-            auth = m.group(1)
+            u = m.group(1)
+            while u and u[-1] in '"\')]}>,;':
+                u = u[:-1]
+            auth = u
     finished = j["proc"].poll() is not None
     j["len"] = len(parts)
     return {"lines": new, "finished": finished, "auth_url": auth, "since": len(parts)}
