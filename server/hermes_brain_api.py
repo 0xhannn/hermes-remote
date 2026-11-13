@@ -1634,8 +1634,11 @@ def scan_tools():
     _conn = _mcp_connected()
     for t in result:
         if t.get("id") in _MCP_TOOLS:
-            if t["id"] in _conn and _mcp_test(t["id"]):
-                t["status"] = "configured"
+            if t["id"] in _conn:
+                if _mcp_test(t["id"]):
+                    t["status"] = "configured"
+                else:
+                    t["status"] = "needs_auth"
                 t["source"] = "MCP (%s)" % t["id"]
     _SHORT = {
         "github": "GitHub", "cloudflare": "Cloudflare", "vercel": "Vercel", "tailscale": "Tailscale",
@@ -2360,7 +2363,10 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
             tid = body.get("id")
             if tid not in _MCP_TOOLS:
                 return self._send_json(404, {"success": False, "error": "bukan tool MCP"})
-            return self._send_json(200, {"success": True, "configured": tid in _mcp_connected()})
+            connected = tid in _mcp_connected()
+            if connected and not _mcp_test(tid):
+                return self._send_json(200, {"success": True, "configured": False, "needs_auth": True})
+            return self._send_json(200, {"success": True, "configured": connected})
 
         if path == "/api/hermes/tools/act":
             tid = body.get("id")

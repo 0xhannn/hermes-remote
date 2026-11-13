@@ -146,6 +146,7 @@
     .tl-add { width: 100%; padding: 7px 8px; border: none; border-radius: 8px; background: #F3F4F6; color: #111827; font-weight: 600; font-size: 12.5px; cursor: pointer; }
     .tl-add:hover { background: #E5E7EB; }
     .tl-ok { width: 100%; padding: 7px 8px; border: none; border-radius: 8px; background: #DCFCE7; color: #15803D; font-weight: 700; font-size: 12.5px; display: flex; align-items: center; justify-content: center; gap: 4px; }
+    .tl-warn { width: 100%; padding: 7px 8px; border: none; border-radius: 8px; background: #FEF3C7; color: #B45309; font-weight: 700; font-size: 12.5px; display: flex; align-items: center; justify-content: center; gap: 4px; }
     .tl-form { display: flex; flex-direction: column; gap: 12px; padding: 8px 0 12px; border-bottom: 1px solid #E5E7EB; margin-bottom: 10px; }
     .tl-form > div { display: flex; flex-direction: column; gap: 6px; }
     .tl-form label { font-size: 12px; color: #57534E; }
@@ -209,6 +210,7 @@
       letter-spacing: 0.3px;
     }
     .tool-badge.configured { background: var(--success-bg); color: #166534; }
+    .tool-badge.needs_auth { background: #FEF3C7; color: #B45309; }
     .tool-badge.not_detected { background: #F1F5F9; color: #64748B; }
     .tool-badge.missing { background: var(--danger-bg); color: #B91C1C; }
     .tool-row { font-size: 13px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
@@ -597,13 +599,16 @@ let toolCat = 'all';
     shown.sort((a, b) => (b.status === 'configured' ? 1 : 0) - (a.status === 'configured' ? 1 : 0));
     const statusTxt = x => x.status === 'configured'
       ? '<div class="tl-act"><button class="tl-ok" data-tool="' + x.id + '" type="button">✔ Terhubung</button></div>'
-      : '<div class="tl-act"><button class="tl-add" data-tool="' + x.id + '" type="button">+ Tambah</button></div>';
+      : x.status === 'needs_auth'
+        ? '<div class="tl-act"><button class="tl-warn" data-tool="' + x.id + '" type="button">⚡ Perlu Izin</button></div>'
+        : '<div class="tl-act"><button class="tl-add" data-tool="' + x.id + '" type="button">+ Tambah</button></div>';
     const items = shown.length
       ? shown.map(x => '<div class="tl-item"><span class="tl-icon">' + toolIconHTML(x.id) + '</span><span class="tl-name">' + escapeHtml(x.name) + '</span>' + statusTxt(x) + '</div>').join('')
       : '<div class="tl-empty">Tidak ada tool dalam filter ini.</div>';
     const grid = ov.querySelector('#toolListGrid');
     if (grid) grid.innerHTML = items;
     grid.querySelectorAll('.tl-add').forEach(btn => { btn.onclick = () => openRegisterForm(btn.dataset.tool, ov); });
+    grid.querySelectorAll('.tl-warn').forEach(btn => { btn.onclick = () => openRegisterForm(btn.dataset.tool, ov); });
     grid.querySelectorAll('.tl-ok').forEach(btn => { btn.onclick = () => openManageModal(btn.dataset.tool, ov); });
     const fbtn = ov.querySelector('#toolFilterBtn');
     if (fbtn) {
@@ -626,7 +631,7 @@ let toolCat = 'all';
           document.querySelectorAll('#toolListOverlay .tool-list-grid .tl-item').forEach((el, i) => {
             const tt = sup[i]; if (!tt) return;
             const st = el.querySelector('.tl-st'); if (!st) return;
-            st.textContent = tt.status === 'configured' ? '✓ Terhubung' : 'Belum terhubung';
+            st.textContent = tt.status === 'configured' ? '✓ Terhubung' : tt.status === 'needs_auth' ? '⚡ Perlu Izin' : 'Belum terhubung';
           });
           lastTools = res.tools;
         } catch (e) {}
