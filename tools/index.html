@@ -131,11 +131,14 @@
       .tool-grid { grid-template-columns: repeat(2, 1fr); }
     }
     .overlay { position: fixed; inset: 0; background: rgba(15,23,42,.55); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 16px; }
-    .modal { background: #fff; border-radius: 12px; width: 100%; max-width: 560px; max-height: 72vh; display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(0,0,0,.25); }
+    .modal { background: #fff; border-radius: 12px; width: 100%; max-width: 780px; max-height: 82vh; display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(0,0,0,.25); }
     .modal-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid #E5E7EB; }
     .modal-head h3 { font-size: 15px; margin: 0; }
     .modal-body { overflow: auto; padding: 12px 16px 16px; }
     .tool-list-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+    @media (min-width: 960px) {
+      .tool-list-grid { grid-template-columns: repeat(4, 1fr); }
+    }
     .tl-item { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 14px 12px; border: 1px solid #E5E7EB; border-radius: 10px; background: #fff; min-height: 106px; }
     .tl-icon { font-size: 26px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
     .tl-name { color: #1C1917; font-weight: 600; font-size: 13px; line-height: 1.3; }
@@ -154,6 +157,7 @@
     .btn-filter { background: #F3F4F6; color: #111827; }
     .filter-overlay { z-index: 210; }
     .filter-modal { max-width: 340px; }
+    .reg-modal { max-width: 480px; }
     .opt-list { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
     .opt-pill { padding: 10px 12px; border: 1px solid #E5E7EB; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; text-align: left; }
     .opt-pill:hover { background: #F9FAFB; }
@@ -520,7 +524,7 @@ let toolCat = 'all';
     ov.innerHTML = '<div class="modal"><div class="modal-head"><h3>Tool Terdaftar</h3><div class="modal-head-actions">' +
       '<button class="btn btn-sm btn-filter" id="toolFilterBtn" type="button">Filter: ' + filterLabel + '</button>' +
       '<button class="btn btn-sm" id="modalClose">Tutup</button></div></div><div class="modal-body">' +
-      '<div id="toolRegisterSlot"></div><div class="tool-list-grid" id="toolListGrid"></div></div></div>';
+      '<div class="tool-list-grid" id="toolListGrid"></div></div></div>';
     _openModal(ov);
     document.getElementById('modalClose').onclick = () => history.back();
     document.getElementById('toolFilterBtn').onclick = () => openFilterModal(ov);
@@ -555,7 +559,7 @@ let toolCat = 'all';
       };
     });
   }
-async function openRegisterForm(toolId, ov) {
+  async function openRegisterForm(toolId, ov) {
     let schemas = null;
     try {
       const res = await apiFetch('tools/schemas');
@@ -564,19 +568,24 @@ async function openRegisterForm(toolId, ov) {
     const meta = lastTools.find(x => x.id === toolId) || {};
     const schema = (schemas && schemas[toolId]) || { fields: [{ key: 'api_key', label: 'API Key', type: 'token' }] };
     const fields = schema.fields || [];
-    let html = '<div class="tl-form"><strong>Tambah ' + escapeHtml(meta.name || toolId) + '</strong>';
+    const rv = document.createElement('div');
+    rv.className = 'overlay'; rv.id = 'toolRegOverlay';
+    let html = '<div class="modal reg-modal"><div class="modal-head"><h3>Tambah ' + escapeHtml(meta.name || toolId) + '</h3>' +
+      '<button class="btn btn-sm" id="regModalClose">Tutup</button></div><div class="modal-body">' +
+      '<div class="tl-form">';
     fields.forEach(f => {
-      html += '<div><label>' + escapeHtml(f.label || f.key) + '</label><input type="' + (f.type === 'text' ? 'text' : 'password') + '" data-key="' + escapeHtml(f.key) + '" placeholder="' + escapeHtml(f.label || f.key) + '" autocomplete="off"></div>';
+      html += '<div><label>' + escapeHtml(f.label || f.key) + '</label><input type="' + (f.type === 'text' ? 'text' : 'password') + '" data-key="' + escapeHtml(f.key) + '" placeholder="Masukkan ' + escapeHtml(f.label || f.key) + '" autocomplete="off"></div>';
     });
     html += '<div class="row"><button class="btn btn-sec" id="regCancel" type="button">Batal</button>' +
-            '<button class="btn btn-primary" id="regSave" type="button">Simpan & Sambungkan</button></div></div>';
-    const slot = ov.querySelector('#toolRegisterSlot');
-    slot.innerHTML = html;
-    slot.style.display = 'block';
-    document.getElementById('regCancel').onclick = () => { slot.innerHTML = ''; slot.style.display = 'none'; };
-    document.getElementById('regSave').onclick = async () => {
+            '<button class="btn btn-primary" id="regSave" type="button">Simpan & Sambungkan</button></div></div></div></div>';
+    rv.innerHTML = html;
+    _openModal(rv);
+    rv.querySelector('#regModalClose').onclick = () => history.back();
+    rv.querySelector('#regCancel').onclick = () => history.back();
+    rv.onclick = e => { if (e.target === rv) history.back(); };
+    rv.querySelector('#regSave').onclick = async () => {
       const payload = {};
-      fields.forEach(f => { const el = slot.querySelector('[data-key="' + f.key + '"]'); payload[f.key] = el ? el.value.trim() : ''; });
+      fields.forEach(f => { const el = rv.querySelector('[data-key="' + f.key + '"]'); payload[f.key] = el ? el.value.trim() : ''; });
       if (Object.values(payload).some(v => !v)) { showModalNotice('Isi semua field dulu.'); return; }
       try {
         const res = await apiFetch('tools/register', 'POST', { id: toolId, fields: payload });
@@ -584,7 +593,7 @@ async function openRegisterForm(toolId, ov) {
           showToast((meta.name || toolId) + ' terhubung.');
           const item = lastTools.find(x => x.id === toolId);
           if (item) item.status = 'configured';
-          slot.innerHTML = ''; slot.style.display = 'none';
+          history.back();
           _rerenderGrid(ov);
         } else showModalNotice(res.error || 'Gagal simpan.');
       } catch (e) { showModalNotice('Gagal: ' + e.message); }
