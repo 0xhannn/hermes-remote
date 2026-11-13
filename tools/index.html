@@ -344,6 +344,51 @@
   }
   function hideNotice() { errorBox.style.display = 'none'; }
 
+  function startAct(toolId, method) {
+    const ov = document.createElement('div');
+    ov.className = 'overlay'; ov.id = 'actOverlay';
+    ov.innerHTML = '<div class="modal reg-modal"><div class="modal-head"><h3 class="modal-title">Menghubungkan…</h3><button class="btn btn-sm" type="button" id="actClose">Tutup</button></div><div class="modal-body"><pre style="background:#111;color:#0f0;padding:10px;max-height:280px;overflow:auto;font:12px monospace;white-space:pre-wrap;margin:0;" id="actLog"></pre><p id="actStatus" style="margin:10px 0 0;">Memulai…</p></div></div>';
+    document.body.appendChild(ov);
+    const log = ov.querySelector('#actLog');
+    const statusEl = ov.querySelector('#actStatus');
+    let since = 0, authShown = false, done = false, timer = null;
+    ov.querySelector('#actClose').onclick = () => { if (timer) clearInterval(timer); ov.remove(); };
+    apiFetch('tools/act', 'POST', { id: toolId }).then(jr => {
+      if (!jr || !jr.success) { showModalNotice((jr && jr.error) || 'Gagal mulai'); ov.remove(); return; }
+      const job = jr.job;
+      const stPath = method === 'mcp' ? 'tools/mcp/status' : 'tools/cli/status';
+      timer = setInterval(async () => {
+        try {
+          const o = await apiFetch('tools/act/' + job + '/out?since=' + since, 'GET');
+          if (!o) return;
+          if (o.lines && o.lines.length) {
+            log.textContent += o.lines.join('\n') + '\n';
+            log.scrollTop = log.scrollHeight;
+            since = o.since;
+            if (o.auth_url && !authShown) {
+              authShown = true;
+              const b = document.createElement('button');
+              b.className = 'btn btn-primary'; b.type = 'button'; b.style.cssText = 'margin-top:10px;display:block;';
+              b.textContent = 'Buka halaman izin →';
+              b.onclick = () => window.open(o.auth_url, '_blank');
+              statusEl.parentNode.insertBefore(b, statusEl.nextSibling);
+            }
+          }
+          if (o.finished && !done) {
+            done = true;
+            const st = await apiFetch(stPath, 'POST', { id: toolId });
+            if (st && st.success && (st.configured || st.connected)) {
+              statusEl.textContent = '✓ Terhubung';
+            } else {
+              statusEl.textContent = 'Proses selesai. Koneksi belum aktif — selesaikan izin bila diminta.';
+            }
+            setTimeout(() => { clearInterval(timer); ov.remove(); if (typeof _rerenderGrid === 'function') _rerenderGrid(); }, 1600);
+          }
+        } catch (e) {}
+      }, 1200);
+    }).catch(() => { showModalNotice('Gagal mulai'); ov.remove(); });
+  }
+
   function showModalNotice(msg) {
     const ov = document.createElement('div');
     ov.className = 'overlay'; ov.id = 'toolNoticeOverlay';
@@ -524,6 +569,23 @@ let toolCat = 'all';
 
   function openToolList() {
     const t = lastTools;
+    if (!window.__tlAuto) {
+      window.__tlAuto = true;
+      setInterval(async () => {
+        if (!document.getElementById('toolListOverlay')) return;
+        try {
+          const res = await apiFetch('tools/scan');
+          if (!res.success) return;
+          const sup = (res.tools || []).filter(x => x.supported);
+          document.querySelectorAll('#toolListOverlay .tool-list-grid .tl-item').forEach((el, i) => {
+            const tt = sup[i]; if (!tt) return;
+            const st = el.querySelector('.tl-st'); if (!st) return;
+            st.textContent = tt.status === 'configured' ? '✓ Terhubung' : 'Belum terhubung';
+          });
+          lastTools = res.tools;
+        } catch (e) {}
+      }, 5000);
+    }
     if (!t) { showToast('Pindai dulu.'); return; }
     const filterLabel = toolFilter === 'conn' ? 'Terhubung' : toolFilter === 'disconn' ? 'Belum terhubung' : 'Semua';
     const ov = document.createElement('div');
@@ -599,6 +661,11 @@ let toolCat = 'all';
     rv.onclick = e => { if (e.target === rv) history.back(); };
     rv.querySelector('#regSave').onclick = async () => {
       if (isOauth) { window.open('/api/hermes/tools/oauth/start?provider=' + encodeURIComponent(toolId), '_blank'); return; }
+      if (isMcp || isCli) {
+        history.back();
+        startAct(toolId, meta.method === 'mcp' ? 'mcp' : 'cli');
+        return;
+      }
       if (isMcp) {
         const mr = await apiFetch('tools/mcp/run', 'POST', { id: toolId });
         if (!mr.success) { showModalNotice(mr.error || 'Gagal mulai koneksi MCP'); history.back(); return; }

@@ -1106,6 +1106,80 @@ def _mcp_connected():
         return set()
 
 
+_JOBS = {}
+
+
+def _job_start(jid, argv, cwd=None):
+    _tf = __import__("tempfile")
+    _sp = __import__("subprocess")
+    f = _tf.NamedTemporaryFile(delete=False, mode="w", encoding="utf-8", suffix=".log")
+    try:
+        proc = _sp.Popen(argv, stdout=f, stderr=_sp.STDOUT, text=True, cwd=cwd)
+    except Exception:
+        f.close()
+        raise
+    _JOBS[jid] = {"proc": proc, "path": f.name, "len": 0}
+    return jid
+
+
+def _job_read(jid, since):
+    j = _JOBS.get(jid)
+    if not j:
+        return None
+    try:
+        with open(j["path"], "r", encoding="utf-8", errors="replace") as f:
+            data = f.read()
+    except Exception:
+        data = ""
+    parts = data.splitlines()
+    new = parts[max(since, 0):]
+    auth = None
+    for ln in new:
+        m = re.search(r'(https?://\S+)', ln)
+        if m and any(k in ln.lower() for k in ("authorize", "device", "verification", "code", "log in")):
+            auth = m.group(1)
+    finished = j["proc"].poll() is not None
+    j["len"] = len(parts)
+    return {"lines": new, "finished": finished, "auth_url": auth, "since": len(parts)}
+
+
+_JOBS = {}
+
+
+def _job_start(jid, argv, cwd=None):
+    _tf = __import__("tempfile")
+    _sp = __import__("subprocess")
+    f = _tf.NamedTemporaryFile(delete=False, mode="w", encoding="utf-8", suffix=".log")
+    try:
+        proc = _sp.Popen(argv, stdout=f, stderr=_sp.STDOUT, text=True, cwd=cwd)
+    except Exception:
+        f.close()
+        raise
+    _JOBS[jid] = {"proc": proc, "path": f.name, "len": 0}
+    return jid
+
+
+def _job_read(jid, since):
+    j = _JOBS.get(jid)
+    if not j:
+        return None
+    try:
+        with open(j["path"], "r", encoding="utf-8", errors="replace") as f:
+            data = f.read()
+    except Exception:
+        data = ""
+    parts = data.splitlines()
+    new = parts[max(since, 0):]
+    auth = None
+    for ln in new:
+        m = re.search(r'(https?://\S+)', ln)
+        if m and any(k in ln.lower() for k in ("authorize", "device", "verification", "code", "log in")):
+            auth = m.group(1)
+    finished = j["proc"].poll() is not None
+    j["len"] = len(parts)
+    return {"lines": new, "finished": finished, "auth_url": auth, "since": len(parts)}
+
+
 def scan_tools():
     """Deteksi credential/auth tool yang terpasang pada host (lintas platform).
     Hanya status + sumber + nilai termask — tidak pernah ekspos token mentah."""
@@ -1579,6 +1653,19 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path.rstrip("/")
+
+        if path.startswith("/api/hermes/tools/act/") and path.endswith("/out"):
+            m = re.match(r'/api/hermes/tools/act/([^/]+)/out$', path)
+            qs = urllib.parse.parse_qs(parsed.query)
+            try:
+                since = int(qs.get("since", ["0"])[0])
+            except Exception:
+                since = 0
+            res = _job_read(m.group(1), since) if m else None
+            if res is None:
+                return self._send_json(404, {"success": False, "error": "job tidak ada"})
+            return self._send_json(200, res)
+
 
         # Static file fallback if requested (e.g. running standalone via CLI without Nginx)
         if not path.startswith("/api/"):
@@ -2212,6 +2299,68 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
             if tid not in _MCP_TOOLS:
                 return self._send_json(404, {"success": False, "error": "bukan tool MCP"})
             return self._send_json(200, {"success": True, "configured": tid in _mcp_connected()})
+
+        if path == "/api/hermes/tools/act":
+            tid = body.get("id")
+            if not isinstance(tid, str):
+                return self._send_json(400, {"success": False, "error": "bad payload: {id} required"})
+            if tid == "github":
+                argv = ["gh", "auth", "login", "--web"]
+            elif tid in _MCP_TOOLS:
+                cat = _MCP_TOOLS[tid]
+                argv = ["cmd", "/c", "hermes mcp install %s && hermes mcp login %s" % (cat, cat)]
+            else:
+                return self._send_json(404, {"success": False, "error": "bukan tool cli/mcp"})
+            jid = "job_%s_%d" % (tid, int(__import__("time").time() * 1000))
+            try:
+                _job_start(jid, argv)
+            except Exception as e:
+                return self._send_json(500, {"success": False, "error": str(e)})
+            return self._send_json(200, {"success": True, "job": jid})
+
+        if path.startswith("/api/hermes/tools/act/") and path.endswith("/out"):
+            m = re.match(r'/api/hermes/tools/act/([^/]+)/out$', path)
+            qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            try:
+                since = int(qs.get("since", ["0"])[0])
+            except Exception:
+                since = 0
+            jid = m.group(1)
+            res = _job_read(jid, since)
+            if res is None:
+                return self._send_json(404, {"success": False, "error": "job tidak ada"})
+            return self._send_json(200, res)
+
+        if path == "/api/hermes/tools/act":
+            tid = body.get("id")
+            if not isinstance(tid, str):
+                return self._send_json(400, {"success": False, "error": "bad payload: {id} required"})
+            if tid == "github":
+                argv = ["gh", "auth", "login", "--web"]
+            elif tid in _MCP_TOOLS:
+                cat = _MCP_TOOLS[tid]
+                argv = ["cmd", "/c", "hermes mcp install %s && hermes mcp login %s" % (cat, cat)]
+            else:
+                return self._send_json(404, {"success": False, "error": "bukan tool cli/mcp"})
+            jid = "job_%s_%d" % (tid, int(__import__("time").time() * 1000))
+            try:
+                _job_start(jid, argv)
+            except Exception as e:
+                return self._send_json(500, {"success": False, "error": str(e)})
+            return self._send_json(200, {"success": True, "job": jid})
+
+        if path.startswith("/api/hermes/tools/act/") and path.endswith("/out"):
+            m = re.match(r'/api/hermes/tools/act/([^/]+)/out$', path)
+            qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            try:
+                since = int(qs.get("since", ["0"])[0])
+            except Exception:
+                since = 0
+            jid = m.group(1)
+            res = _job_read(jid, since)
+            if res is None:
+                return self._send_json(404, {"success": False, "error": "job tidak ada"})
+            return self._send_json(200, res)
 
         if path == "/api/hermes/auth/logout":
             expired = "hermes_pin=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"
