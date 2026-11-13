@@ -1080,6 +1080,32 @@ def _save_registry(reg):
         json.dump({"tools": reg}, f, indent=2, ensure_ascii=False)
     os.replace(tmp, REGISTRY_PATH)
 
+_MCP_TOOLS = {
+    "cloudflare": "cloudflare",
+    "neon": "neon",
+    "notion": "notion",
+    "supabase": "supabase",
+    "vercel": "vercel",
+}
+
+
+def _mcp_connected():
+    """Baca status MCP dari Hermes agent lokal (laptop) via `hermes mcp list`."""
+    try:
+        r = subprocess.run(["hermes", "mcp", "list"], capture_output=True,
+                            timeout=30, text=True, encoding="utf-8", errors="replace")
+        out = (r.stdout or "") + (r.stderr or "")
+        if "No MCP servers configured." in out:
+            return set()
+        conn = set()
+        for sid in _MCP_TOOLS:
+            if re.search(r'(?<![\w])' + re.escape(sid) + r'(?![\w])', out):
+                conn.add(sid)
+        return conn
+    except Exception:
+        return set()
+
+
 def scan_tools():
     """Deteksi credential/auth tool yang terpasang pada host (lintas platform).
     Hanya status + sumber + nilai termask — tidak pernah ekspos token mentah."""
@@ -1476,7 +1502,7 @@ def scan_tools():
     for tool in result:
         tool["category"] = cats_of.get(tool.get("id"), "Lainnya")
         tool["supported"] = tool.get("id") in cats_of
-        tool["method"] = "cli" if tool.get("id") in _CLI_TOOLS else "manual"
+        tool["method"] = "mcp" if tool.get("id") in _MCP_TOOLS else ("cli" if tool.get("id") in _CLI_TOOLS else "manual")
     seen = {x.get("id") for x in result}
     for tid, cfg in TOOL_SCHEMAS.items():
         if tid not in seen:
@@ -1490,26 +1516,13 @@ def scan_tools():
                 "supported": True,
             })
 
+    _conn = _mcp_connected()
+    for t in result:
+        if t.get("id") in _MCP_TOOLS:
+            if t["id"] in _conn:
+                t["status"] = "configured"
+                t["source"] = "MCP (%s)" % t["id"]
     return result
-
-
-
-_REPO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-_OAUTH_CALLBACK = "http://127.0.0.1:%s/api/hermes/tools/oauth/callback" % PORT
-_OAUTH_STATE = {}
-_OAUTH_PROVIDERS = {
-    "github": {
-        "authorize": "https://github.com/login/oauth/authorize",
-        "token": "https://github.com/login/oauth/access_token",
-        "scope": "repo read:user",
-    },
-    "vercel": {
-        "authorize": "https://vercel.com/oauth/authorize",
-        "token": "https://api.vercel.com/v2/oauth/access_token",
-        "scope": "",
-    },
-}
-
 def _oauth_apps():
     try:
         with open(os.path.join(_REPO_DIR, "tools", "oauth_apps.json"), encoding="utf-8") as f:
@@ -2179,6 +2192,26 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
             except Exception:
                 configured = False
             return self._send_json(200, {"success": True, "id": tid, "configured": configured})
+
+        if path == "/api/hermes/tools/mcp/run":
+            tid = body.get("id")
+            if not isinstance(tid, str):
+                return self._send_json(400, {"success": False, "error": "bad payload: {id} required"})
+            if tid not in _MCP_TOOLS:
+                return self._send_json(404, {"success": False, "error": "bukan tool MCP"})
+            cat = _MCP_TOOLS[tid]
+            try:
+                Popen(["hermes", "mcp", "add", cat], stdout=DEVNULL, stderr=DEVNULL)
+                Popen(["hermes", "mcp", "login", cat], stdout=DEVNULL, stderr=DEVNULL)
+            except Exception as e:
+                return self._send_json(500, {"success": False, "error": str(e)})
+            return self._send_json(200, {"success": True, "id": tid})
+
+        if path == "/api/hermes/tools/mcp/status":
+            tid = body.get("id")
+            if tid not in _MCP_TOOLS:
+                return self._send_json(404, {"success": False, "error": "bukan tool MCP"})
+            return self._send_json(200, {"success": True, "configured": tid in _mcp_connected()})
 
         if path == "/api/hermes/auth/logout":
             expired = "hermes_pin=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"

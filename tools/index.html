@@ -577,7 +577,8 @@ let toolCat = 'all';
     const fields = schema.fields || [];
     const isOauth = !!schema.oauth;
     const isCli = meta.method === 'cli';
-    const noField = isOauth || isCli;
+    const isMcp = meta.method === 'mcp';
+    const noField = isOauth || isCli || isMcp;
     const rv = document.createElement('div');
     rv.className = 'overlay'; rv.id = 'toolRegOverlay';
     let html = '<div class="modal reg-modal"><div class="modal-head"><h3>Tambah ' + escapeHtml(meta.name || toolId) + '</h3>' +
@@ -590,7 +591,7 @@ let toolCat = 'all';
       });
     }
     html += '<div class="row"><button class="btn btn-sec" id="regCancel" type="button">Batal</button>' +
-            '<button class="btn btn-primary" id="regSave" type="button">' + (isOauth ? 'Sambungkan via OAuth' : (isCli ? 'Jalankan Setup di Terminal' : 'Simpan & Sambungkan')) + '</button></div></div></div></div>';
+            '<button class="btn btn-primary" id="regSave" type="button">' + (isOauth ? 'Sambungkan via OAuth' : (isCli ? 'Jalankan Setup di Terminal' : (isMcp ? 'Hubungkan via MCP' : 'Simpan & Sambungkan'))) + '</button></div></div></div></div>';
     rv.innerHTML = html;
     _openModal(rv);
     rv.querySelector('#regModalClose').onclick = () => history.back();
@@ -598,6 +599,18 @@ let toolCat = 'all';
     rv.onclick = e => { if (e.target === rv) history.back(); };
     rv.querySelector('#regSave').onclick = async () => {
       if (isOauth) { window.open('/api/hermes/tools/oauth/start?provider=' + encodeURIComponent(toolId), '_blank'); return; }
+      if (isMcp) {
+        const mr = await apiFetch('tools/mcp/run', 'POST', { id: toolId });
+        if (!mr.success) { showModalNotice(mr.error || 'Gagal mulai koneksi MCP'); history.back(); return; }
+        const t0 = Date.now();
+        while (Date.now() - t0 < 120000) {
+          await new Promise(r => setTimeout(r, 3000));
+          const st = await apiFetch('tools/mcp/status', 'POST', { id: toolId });
+          if (st.success && st.configured) break;
+        }
+        history.back();
+        return;
+      }
       if (isCli) {
         const runRes = await apiFetch('tools/cli/run', 'POST', { id: toolId });
         if (!runRes.success) { showModalNotice(runRes.error || 'Gagal jalankan setup di terminal'); history.back(); return; }
