@@ -743,7 +743,7 @@ let toolCat = 'all';
     rv.innerHTML = html;
     _openModal(rv);
     rv.querySelector('#regModalClose').onclick = () => history.back();
-    rv.querySelector('#regCancel').onclick = () => history.back();
+    const regCancel = rv.querySelector('#regCancel'); if (regCancel) regCancel.onclick = () => history.back();
     rv.onclick = e => { if (e.target === rv) history.back(); };
     rv.querySelector('#regSave').onclick = () => runWithSpin(rv.querySelector('#regSave'), async () => {
       if (isOauth) { window.open('/api/hermes/tools/oauth/start?provider=' + encodeURIComponent(toolId), '_blank'); return; }
