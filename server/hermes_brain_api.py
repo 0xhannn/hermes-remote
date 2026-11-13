@@ -1617,7 +1617,13 @@ def scan_tools():
     for tool in result:
         tool["category"] = cats_of.get(tool.get("id"), "Lainnya")
         tool["supported"] = tool.get("id") in cats_of
-        tool["method"] = "mcp" if tool.get("id") in _MCP_TOOLS else ("cli" if tool.get("id") in _CLI_TOOLS else "manual")
+        _tid = tool.get("id")
+        _ms = []
+        if _tid in _MCP_TOOLS: _ms.append("mcp")
+        if _tid in _CLI_TOOLS: _ms.append("cli")
+        if _tid not in _MCP_TOOLS or _tid in _CLI_TOOLS: _ms.append("key")
+        tool["methods"] = _ms or ["key"]
+        tool["method"] = tool["methods"][0]
     seen = {x.get("id") for x in result}
     for tid, cfg in TOOL_SCHEMAS.items():
         if tid not in seen:
@@ -1661,6 +1667,17 @@ def _oauth_apps():
 _CLI_TOOLS = {
     "github": {"check": ["gh", "auth", "status"], "setup": ["gh", "auth", "login", "--web"]},
     "vercel": {"check": ["vercel", "whoami"], "setup": ["vercel", "login"]},
+    "rclone": {"check": ["rclone", "version"], "setup": ["rclone", "config"]},
+    "aws": {"check": ["aws", "sts", "get-caller-identity"], "setup": ["aws", "configure"]},
+    "gcp": {"check": ["gcloud", "auth", "list"], "setup": ["gcloud", "auth", "login"]},
+    "heroku": {"check": ["heroku", "whoami"], "setup": ["heroku", "login"]},
+    "flyio": {"check": ["fly", "whoami"], "setup": ["fly", "auth", "login"]},
+    "railway": {"check": ["railway", "whoami"], "setup": ["railway", "login"]},
+    "netlify": {"check": ["netlify", "status"], "setup": ["netlify", "login"]},
+    "gitlab": {"check": ["glab", "auth", "status"], "setup": ["glab", "auth", "login"]},
+    "tailscale": {"check": ["tailscale", "status"], "setup": ["tailscale", "login"]},
+    "kubernetes": {"check": ["kubectl", "config", "current-context"], "setup": ["kubectl", "config", "get-contexts"]},
+    "docker": {"check": ["docker", "info"], "setup": ["docker", "login"]},
 }
 
 class HermesBrainHandler(http.server.BaseHTTPRequestHandler):

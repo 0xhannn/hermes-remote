@@ -762,85 +762,77 @@ let toolMethod = 'all';
     const meta = lastTools.find(x => x.id === toolId) || {};
     const schema = (schemas && schemas[toolId]) || { fields: [{ key: 'api_key', label: 'API Key', type: 'token' }] };
     const fields = schema.fields || [];
-    const isOauth = !!schema.oauth;
-    const isCli = meta.method === 'cli';
-    const isMcp = meta.method === 'mcp';
-    const noField = isOauth || isCli || isMcp;
     const nm = escapeHtml(meta.name || toolId);
-    const btnLabel = isOauth ? 'Sambungkan via OAuth' : (isCli ? 'Jalankan Setup di Terminal' : (isMcp ? 'Hubungkan via MCP' : 'Simpan Key'));
+    const methods = (meta.methods && meta.methods.length) ? meta.methods : [meta.method || 'key'];
+    const hasSel = methods.length > 1;
+    let sel = 'key';
+    if (methods.includes('mcp')) sel = 'mcp';
+    else if (methods.includes('cli')) sel = 'cli';
+    else if (methods.includes('oauth')) sel = 'oauth';
+    const M_LABEL = { mcp: 'MCP', cli: 'CLI', key: 'KEY', oauth: 'OAuth' };
     const rv = document.createElement('div');
     rv.className = 'overlay'; rv.id = 'toolRegOverlay';
-    let html = '<div class="modal reg-modal mg-modal"><div class="modal-head"><h3>Tambah ' + nm + '</h3>' +
-      '<button class="btn btn-sm btn-ghost" id="regModalClose" type="button" aria-label="Tutup">✕</button></div><div class="modal-body">' +
-      '<div class="mg-ic">' + MG_PLUG + '</div>' +
-      '<div class="mg-title">' + nm + '</div>';
-    if (noField) {
-      html += '<div class="mg-desc">' + (isOauth ? 'Sambungkan akun ' + nm + ' lewat OAuth.'
-        : isCli ? 'Jalankan setup di terminal untuk menyambungkan ' + nm + '.'
-        : 'Hubungkan ' + nm + ' lewat MCP — izin dibuka otomatis.') + '</div>' +
-        '<button class="btn btn-primary mg-btn" id="regSave" type="button">' + btnLabel + '</button></div></div>';
-    } else {
-      html = html.replace('class="modal reg-modal mg-modal"', 'class="modal reg-modal mg-form"');
-      html += '<div class="mg-desc">Masukkan API Key untuk ' + nm + '.</div>' +
-        '<div class="tl-form">';
-      fields.forEach(f => {
-        html += '<div><label>' + escapeHtml(f.label || f.key) + '</label><input type="' + (f.type === 'text' ? 'text' : 'password') + '" data-key="' + escapeHtml(f.key) + '" placeholder="Masukkan ' + escapeHtml(f.label || f.key) + '" autocomplete="off"></div>';
-      });
-      html += '<div class="mg-row"><button class="btn btn-sec" id="regCancel" type="button">Batal</button>' +
-        '<button class="btn btn-primary" id="regSave" type="button">' + btnLabel + '</button></div></div></div></div>';
-    }
-    rv.innerHTML = html;
-    _openModal(rv);
-    rv.querySelector('#regModalClose').onclick = () => history.back();
-    const regCancel = rv.querySelector('#regCancel'); if (regCancel) regCancel.onclick = () => history.back();
-    rv.onclick = e => { if (e.target === rv) history.back(); };
-    rv.querySelector('#regSave').onclick = () => runWithSpin(rv.querySelector('#regSave'), async () => {
-      if (isOauth) { window.open('/api/hermes/tools/oauth/start?provider=' + encodeURIComponent(toolId), '_blank'); return; }
-      if (isMcp || isCli) {
-        history.back();
-        startAct(toolId, meta.method === 'mcp' ? 'mcp' : 'cli');
-        return;
+    const render = () => {
+      const isKey = sel === 'key';
+      let html = '<div class="modal reg-modal ' + (isKey ? 'mg-form' : 'mg-modal') + '"><div class="modal-head"><h3>Tambah ' + nm + '</h3>' +
+        '<button class="btn btn-sm btn-ghost" id="regModalClose" type="button" aria-label="Tutup">✕</button></div><div class="modal-body">' +
+        '<div class="mg-ic">' + MG_PLUG + '</div>' +
+        '<div class="mg-title">' + nm + '</div>';
+      if (hasSel) {
+        html += '<div class="opt-group" style="margin:10px 0;"><div class="opt-label">Metode Koneksi</div><div class="opt-list" id="regMeth">' +
+          methods.map(m => '<div class="opt-pill' + (m === sel ? ' active' : '') + '" data-fk="' + m + '" data-grp="method">' + M_LABEL[m] + '</div>').join('') +
+          '</div></div>';
       }
-      if (isMcp) {
-        const mr = await apiFetch('tools/mcp/run', 'POST', { id: toolId });
-        if (!mr.success) { showModalNotice(mr.error || 'Gagal mulai koneksi MCP'); history.back(); return; }
-        const t0 = Date.now();
-        while (Date.now() - t0 < 120000) {
-          await new Promise(r => setTimeout(r, 3000));
-          const st = await apiFetch('tools/mcp/status', 'POST', { id: toolId });
-          if (st.success && st.configured) break;
-        }
-        history.back();
-        return;
+      if (isKey) {
+        html += '<div class="mg-desc">Masukkan API Key untuk ' + nm + '.</div>' +
+          '<div class="tl-form">';
+        fields.forEach(f => {
+          html += '<div><label>' + escapeHtml(f.label || f.key) + '</label><input type="' + (f.type === 'text' ? 'text' : 'password') + '" data-key="' + escapeHtml(f.key) + '" placeholder="Masukkan ' + escapeHtml(f.label || f.key) + '" autocomplete="off"></div>';
+        });
+        html += '<div class="mg-row"><button class="btn btn-sec" id="regCancel" type="button">Batal</button>' +
+          '<button class="btn btn-primary" id="regSave" type="button">' + (sel === 'key' ? 'Simpan Key' : 'Simpan') + '</button></div></div></div></div>';
+      } else {
+        html += '<div class="mg-desc">' + (sel === 'oauth' ? 'Sambungkan akun ' + nm + ' lewat OAuth.'
+          : sel === 'cli' ? 'Jalankan setup di terminal untuk menyambungkan ' + nm + '.'
+          : 'Hubungkan ' + nm + ' lewat MCP — izin dibuka otomatis.') + '</div>' +
+          '<button class="btn btn-primary mg-btn" id="regSave" type="button">' + (sel === 'oauth' ? 'Sambungkan via OAuth' : (sel === 'cli' ? 'Jalankan Setup di Terminal' : 'Hubungkan via MCP')) + '</button></div></div>';
       }
-      if (isCli) {
-        const runRes = await apiFetch('tools/cli/run', 'POST', { id: toolId });
-        if (!runRes.success) { showModalNotice(runRes.error || 'Gagal jalankan setup di terminal'); history.back(); return; }
-        let done = false;
-        for (let i = 0; i < 20 && !done; i++) {
-          await new Promise(r => setTimeout(r, 3000));
-          try { const st = await apiFetch('tools/cli/status', 'POST', { id: toolId });
-                if (st.success && st.configured) done = true; } catch (e) {}
-        }
-        history.back();
-        return;
+      rv.innerHTML = html;
+      _openModal(rv);
+      rv.querySelector('#regModalClose').onclick = () => history.back();
+      const regCancel = rv.querySelector('#regCancel'); if (regCancel) regCancel.onclick = () => history.back();
+      rv.onclick = e => { if (e.target === rv) history.back(); };
+      if (hasSel) {
+        rv.querySelectorAll('[data-grp="method"]').forEach(p => {
+          p.onclick = () => { sel = p.dataset.fk; render(); };
+        });
       }
-      const payload = {};
-      fields.forEach(f => { const el = rv.querySelector('[data-key="' + f.key + '"]'); payload[f.key] = el ? el.value.trim() : ''; });
-      if (Object.values(payload).some(v => !v)) { showModalNotice('Isi semua field dulu.'); return; }
-      try {
-        const res = await apiFetch('tools/register', 'POST', { id: toolId, fields: payload });
-        if (res.success) {
-          showToast((meta.name || toolId) + ' terhubung.');
-          const item = lastTools.find(x => x.id === toolId);
-          if (item) item.status = 'configured';
-          _rerenderGrid(_pageOv);
+      rv.querySelector('#regSave').onclick = () => runWithSpin(rv.querySelector('#regSave'), async () => {
+        if (sel === 'oauth') { window.open('/api/hermes/tools/oauth/start?provider=' + encodeURIComponent(toolId), '_blank'); return; }
+        if (sel === 'mcp' || sel === 'cli') {
           history.back();
-          refreshGrid();
-        } else showModalNotice(res.error || 'Gagal simpan.');
-      } catch (e) { showModalNotice('Gagal: ' + e.message); }
-    });
-  }  const MG_PLUG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></svg>';
+          startAct(toolId, sel);
+          return;
+        }
+        const payload = {};
+        fields.forEach(f => { const el = rv.querySelector('[data-key="' + f.key + '"]'); payload[f.key] = el ? el.value.trim() : ''; });
+        if (Object.values(payload).some(v => !v)) { showModalNotice('Isi semua field dulu.'); return; }
+        try {
+          const res = await apiFetch('tools/register', 'POST', { id: toolId, fields: payload });
+          if (res.success) {
+            showToast((meta.name || toolId) + ' terhubung.');
+            const item = lastTools.find(x => x.id === toolId);
+            if (item) item.status = 'configured';
+            _rerenderGrid(_pageOv);
+            history.back();
+            refreshGrid();
+          } else showModalNotice(res.error || 'Gagal simpan.');
+        } catch (e) { showModalNotice('Gagal: ' + e.message); }
+      });
+    };
+    render();
+  }
+  const MG_PLUG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></svg>';
   const MG_WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
   function openManageModal(toolId, ov) {
     const item = lastTools.find(x => x.id === toolId) || {};
