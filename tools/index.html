@@ -708,13 +708,10 @@ let toolCat = 'all';
     mv.className = 'overlay'; mv.id = 'toolManageOverlay';
     mv.innerHTML = '<div class="modal reg-modal"><div class="modal-head"><h3>Kelola ' + escapeHtml(item.name || toolId) + '</h3>' +
       '<button class="btn btn-sm" id="mgClose">Tutup</button></div><div class="modal-body">' +
-      '<div class="tl-form"><div><label>Status</label><input type="text" value="Terhubung" readonly></div>' +
-      '<div><label>Sumber Kredensial</label><input type="text" value="' + escapeHtml(item.source || 'tools/registry.json') + '" readonly></div>' +
-      '<div class="row"><button class="btn btn-sec" id="mgCancel" type="button">Batal</button>' +
-      '<button class="btn btn-danger" id="mgDisconnect" type="button">Putuskan Sambungan</button></div></div></div></div>';
+      '<div class="tl-empty">Yakin putuskan sambungan?</div>' +
+      '<div class="row"><button class="btn btn-danger" id="mgDisconnect" type="button">Putuskan Sambungan</button></div></div></div>';
     _openModal(mv);
     mv.querySelector('#mgClose').onclick = () => history.back();
-    mv.querySelector('#mgCancel').onclick = () => history.back();
     mv.onclick = e => { if (e.target === mv) history.back(); };
     mv.querySelector('#mgDisconnect').onclick = async () => {
       try {
