@@ -596,11 +596,12 @@ let toolCat = 'all';
       if (toolCat !== 'all' && x.category !== toolCat) return false;
       return true;
     });
-    shown.sort((a, b) => (b.status === 'configured' ? 1 : 0) - (a.status === 'configured' ? 1 : 0));
+    const rank = s => s === 'configured' ? 2 : s === 'needs_auth' ? 1 : 0;
+    shown.sort((a, b) => rank(b.status) - rank(a.status));
     const statusTxt = x => x.status === 'configured'
       ? '<div class="tl-act"><button class="tl-ok" data-tool="' + x.id + '" type="button">✔ Terhubung</button></div>'
       : x.status === 'needs_auth'
-        ? '<div class="tl-act"><button class="tl-warn" data-tool="' + x.id + '" type="button">⚡ Perlu Izin</button></div>'
+        ? '<div class="tl-act"><button class="tl-warn" data-tool="' + x.id + '" type="button">⚡ Authenticate</button></div>'
         : '<div class="tl-act"><button class="tl-add" data-tool="' + x.id + '" type="button">+ Tambah</button></div>';
     const items = shown.length
       ? shown.map(x => '<div class="tl-item"><span class="tl-icon">' + toolIconHTML(x.id) + '</span><span class="tl-name">' + escapeHtml(x.name) + '</span>' + statusTxt(x) + '</div>').join('')
@@ -608,7 +609,7 @@ let toolCat = 'all';
     const grid = ov.querySelector('#toolListGrid');
     if (grid) grid.innerHTML = items;
     grid.querySelectorAll('.tl-add').forEach(btn => { btn.onclick = () => openRegisterForm(btn.dataset.tool, ov); });
-    grid.querySelectorAll('.tl-warn').forEach(btn => { btn.onclick = () => openRegisterForm(btn.dataset.tool, ov); });
+    grid.querySelectorAll('.tl-warn').forEach(btn => { btn.onclick = () => startAct(btn.dataset.tool, 'mcp'); });
     grid.querySelectorAll('.tl-ok').forEach(btn => { btn.onclick = () => openManageModal(btn.dataset.tool, ov); });
     const fbtn = ov.querySelector('#toolFilterBtn');
     if (fbtn) {
@@ -631,7 +632,7 @@ let toolCat = 'all';
           document.querySelectorAll('#toolListOverlay .tool-list-grid .tl-item').forEach((el, i) => {
             const tt = sup[i]; if (!tt) return;
             const st = el.querySelector('.tl-st'); if (!st) return;
-            st.textContent = tt.status === 'configured' ? '✓ Terhubung' : tt.status === 'needs_auth' ? '⚡ Perlu Izin' : 'Belum terhubung';
+            st.textContent = tt.status === 'configured' ? '✓ Terhubung' : tt.status === 'needs_auth' ? '⚡ Authenticate' : 'Belum terhubung';
           });
           lastTools = res.tools;
         } catch (e) {}
