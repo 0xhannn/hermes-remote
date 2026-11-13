@@ -708,24 +708,34 @@ let toolCat = 'all';
     mv.className = 'overlay'; mv.id = 'toolManageOverlay';
     mv.innerHTML = '<div class="modal reg-modal"><div class="modal-head"><h3>Kelola ' + escapeHtml(item.name || toolId) + '</h3>' +
       '<button class="btn btn-sm" id="mgClose">Tutup</button></div><div class="modal-body">' +
-      '<div class="tl-empty">Yakin putuskan sambungan?</div>' +
       '<div class="row"><button class="btn btn-danger" id="mgDisconnect" type="button">Putuskan Sambungan</button></div></div></div>';
     _openModal(mv);
     mv.querySelector('#mgClose').onclick = () => history.back();
     mv.onclick = e => { if (e.target === mv) history.back(); };
-    mv.querySelector('#mgDisconnect').onclick = async () => {
-      try {
-        const res = await apiFetch('tools/disconnect', 'POST', { id: toolId });
-        if (res.success) {
-          showToast((item.name || toolId) + ' diputuskan.');
-          const it = lastTools.find(x => x.id === toolId);
-          if (it) it.status = 'not_detected';
-          _rerenderGrid(_pageOv);
-          history.back();
-          refreshGrid();
-        } else showModalNotice(res.error || 'Gagal memutuskan.');
-      } catch (e) { showModalNotice('Gagal: ' + e.message); }
+    const body = mv.querySelector('.modal-body');
+    const showConfirm = () => {
+      body.innerHTML = '<div class="tl-empty">Yakin putuskan sambungan?</div>' +
+        '<div class="row"><button class="btn btn-sec" id="mgCancel" type="button">Batal</button>' +
+        '<button class="btn btn-danger" id="mgYes" type="button">Ya, Putuskan</button></div>';
+      body.querySelector('#mgCancel').onclick = () => {
+        body.innerHTML = '<div class="row"><button class="btn btn-danger" id="mgDisconnect" type="button">Putuskan Sambungan</button></div>';
+        body.querySelector('#mgDisconnect').onclick = showConfirm;
+      };
+      body.querySelector('#mgYes').onclick = async () => {
+        try {
+          const res = await apiFetch('tools/disconnect', 'POST', { id: toolId });
+          if (res.success) {
+            showToast((item.name || toolId) + ' diputuskan.');
+            const it = lastTools.find(x => x.id === toolId);
+            if (it) it.status = 'not_detected';
+            _rerenderGrid(_pageOv);
+            history.back();
+            refreshGrid();
+          } else showModalNotice(res.error || 'Gagal memutuskan.');
+        } catch (e) { showModalNotice('Gagal: ' + e.message); }
+      };
     };
+    mv.querySelector('#mgDisconnect').onclick = showConfirm;
   }
 
 
