@@ -30,6 +30,7 @@ import urllib.parse
 import urllib.request
 import secrets
 import subprocess
+import subprocess
 import time
 import stat
 
@@ -1475,6 +1476,7 @@ def scan_tools():
     for tool in result:
         tool["category"] = cats_of.get(tool.get("id"), "Lainnya")
         tool["supported"] = tool.get("id") in cats_of
+        tool["method"] = "portal" if tool.get("id") in _PORTAL_TOOLS else ("cli" if tool.get("id") in _CLI_TOOLS else "manual")
     seen = {x.get("id") for x in result}
     for tid, cfg in TOOL_SCHEMAS.items():
         if tid not in seen:
@@ -1514,6 +1516,12 @@ def _oauth_apps():
             return json.load(f)
     except Exception:
         return {}
+
+_PORTAL_TOOLS = {"notion", "gmail", "gdrive", "telegram"}
+_CLI_TOOLS = {
+    "github": {"check": ["gh", "auth", "status"], "setup": ["gh", "auth", "login", "--web"]},
+    "vercel": {"check": ["vercel", "whoami"], "setup": ["vercel", "login"]},
+}
 
 class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
 
@@ -2148,6 +2156,30 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
                 return self._send_json(200, {"success": True, "id": tid})
             except Exception as e:
                 return self._send_json(500, {"success": False, "error": str(e)})
+
+        if path == "/api/hermes/tools/cli/run":
+            tid = body.get("id")
+            cmd = _CLI_TOOLS.get(tid)
+            if not cmd:
+                return self._send_json(404, {"success": False, "error": "tool tanpa setup CLI"})
+            try:
+                __import__("subprocess").Popen(cmd["setup"], stdout=__import__("subprocess").DEVNULL, stderr=__import__("subprocess").DEVNULL)
+                return self._send_json(200, {"success": True, "id": tid, "started": True})
+            except Exception as e:
+                return self._send_json(500, {"success": False, "error": str(e)})
+
+        if path == "/api/hermes/tools/cli/status":
+            tid = body.get("id")
+            cmd = _CLI_TOOLS.get(tid)
+            if not cmd:
+                return self._send_json(404, {"success": False, "error": "tool tanpa CLI status"})
+            configured = False
+            try:
+                r = __import__("subprocess").run(cmd["check"], capture_output=True, timeout=20)
+                configured = (r.returncode == 0)
+            except Exception:
+                configured = False
+            return self._send_json(200, {"success": True, "id": tid, "configured": configured})
 
         if path == "/api/hermes/auth/logout":
             expired = "hermes_pin=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"
