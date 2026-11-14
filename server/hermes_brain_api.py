@@ -1086,6 +1086,7 @@ _MCP_TOOLS = {
     "notion": "notion",
     "supabase": "supabase",
     "vercel": "vercel",
+    "landingfolio": "landingfolio",
 }
 
 
