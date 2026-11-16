@@ -1928,6 +1928,7 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
                 return self._send_json(st, {"success": False, "error": res.get("message")})
             items = []
             for r in res.get("results", []):
+                par = r.get("parent") or {}
                 if r.get("object") == "page":
                     props = r.get("properties", {})
                     title = ""
@@ -1935,9 +1936,12 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
                         if isinstance(v, dict) and v.get("type") == "title":
                             title = "".join(x.get("plain_text", "") for x in v.get("title", []))
                             break
-                    items.append({"id": r.get("id"), "title": title or "(untitled)", "kind": "page", "parent": (r.get("parent") or {}).get("page_id") or ""})
+                    # parent bisa page_id ATAU database_id (baris database)
+                    ppar = par.get("page_id") or par.get("database_id") or ""
+                    items.append({"id": r.get("id"), "title": title or "(untitled)", "kind": "page", "parent": ppar})
                 else:
-                    items.append({"id": r.get("id"), "title": _notion_title(r), "kind": "database"})
+                    # database (child page) — parent = page_id penampungnya
+                    items.append({"id": r.get("id"), "title": _notion_title(r), "kind": "database", "parent": par.get("page_id") or ""})
             return self._send_json(200, {"success": True, "items": items})
 
 
