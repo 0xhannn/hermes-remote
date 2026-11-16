@@ -655,12 +655,13 @@ def _notion_title(d):
         return "(untitled)"
 
 def _page_title(props):
-    name = props.get("Name") or props.get("title")
-    if isinstance(name, dict):
-        arr = name.get("title", []) if isinstance(name, dict) else []
-        s = "".join(x.get("plain_text", "") for x in arr)
-        if s:
-            return s
+    # Cari kolom title apa pun (bukan cuma "Name"/"title") — baris database
+    # sering pakai nama kolom lain (mis. "Asset").
+    for v in (props or {}).values():
+        if isinstance(v, dict) and v.get("type") == "title":
+            s = "".join(x.get("plain_text", "") for x in v.get("title", []))
+            if s:
+                return s
     return "(untitled)"
 
 def _notion_fetch_children(token, block_id):
@@ -894,6 +895,62 @@ def _notion_tree(token, block_id, depth=0, seen=None):
         out.append(node)
     return out
 
+def _notion_props_to_blocks(props):
+    """Render baris database (parent.type == database_id) jadi blok.
+
+    Baris database tidak punya block children — isinya ada di properties.
+    Title column di-skip (dipakai sebagai judul halaman). Setiap kolom
+    lain jadi satu blok: url → bookmark, lainnya → paragraph 'Label: nilai'.
+    """
+    out = []
+    for k, v in (props or {}).items():
+        if not isinstance(v, dict):
+            continue
+        typ = v.get("type")
+        if typ == "title":
+            continue
+        val = ""
+        url = None
+        if typ == "rich_text":
+            val = "".join(x.get("plain_text", "") for x in v.get("rich_text", []))
+        elif typ == "select" and isinstance(v.get("select"), dict):
+            val = v["select"].get("name", "")
+        elif typ == "status" and isinstance(v.get("status"), dict):
+            val = v["status"].get("name", "")
+        elif typ == "multi_select":
+            val = ", ".join(o.get("name", "") for o in v.get("multi_select", []) if isinstance(o, dict))
+        elif typ == "url":
+            url = v.get("url") or ""
+            val = url
+        elif typ == "number" and v.get("number") is not None:
+            val = str(v["number"])
+        elif typ == "date" and isinstance(v.get("date"), dict):
+            val = v["date"].get("start", "") or ""
+        elif typ == "checkbox":
+            val = "Yes" if v.get("checkbox") else "No"
+        elif typ == "email":
+            val = v.get("email") or ""
+        elif typ == "phone_number":
+            val = v.get("phone_number") or ""
+        elif typ == "people":
+            val = ", ".join(p.get("name", "") for p in v.get("people", []) if isinstance(p, dict) and p.get("name"))
+        elif typ == "formula" and isinstance(v.get("formula"), dict):
+            f = v["formula"]
+            val = str(f.get(f.get("type"), ""))
+        if not val and not url:
+            continue
+        if url:
+            out.append({"type": "bookmark", "url": url, "icon": "",
+                        "rt": [{"t": val, "b": False, "i": False, "c": False,
+                                "s": False, "u": False, "color": "default", "href": url}]})
+        else:
+            rt = [{"t": k + ": ", "b": True, "i": False, "c": False,
+                   "s": False, "u": False, "color": "default", "href": None},
+                  {"t": val, "b": False, "i": False, "c": False,
+                   "s": False, "u": False, "color": "default", "href": None}]
+            out.append({"type": "paragraph", "rt": rt, "color": "default"})
+    return out
+
 def _notion_props_to_md(props):
 
     lines = []
@@ -1086,7 +1143,6 @@ _MCP_TOOLS = {
     "notion": "notion",
     "supabase": "supabase",
     "vercel": "vercel",
-    "landingfolio": "landingfolio",
 }
 
 
@@ -1391,17 +1447,19 @@ def scan_tools():
                    "source": nt_src, "credential": nt_cred,
                    "detected_at": datetime.utcnow().isoformat() + "Z"})
 
-    # ---- 9router (daemon lokal; api_key model BUKAN kredensial tool) ----
-    n_status, n_src, n_cred = "not_detected", "", None
-    try:
-        rr = subprocess.run(["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}",
-                             "http://127.0.0.1:20128/v1/models"],
-                            capture_output=True, timeout=5, text=True,
-                            encoding="utf-8", errors="replace")
-        if rr.returncode == 0 and rr.stdout.strip().startswith("2"):
-            n_status, n_src = "configured", "daemon lokal 127.0.0.1:20128 (9router/dahl-proxy)"
-    except Exception:
-        pass
+    # ---- 9router (custom provider / model api_key) ----
+    n_status, n_src, n_cred = "missing", "", None
+    model_cfg = cfg.get("model", {})
+    m_base = str(model_cfg.get("base_url") or "").lower()
+    m_key = model_cfg.get("api_key")
+    if m_key and "9router" in m_base:
+        n_status, n_src, n_cred = "configured", "config.yaml model (9router)", _mask_secret(m_key)
+    if n_status != "configured":
+        for cp in (cfg.get("custom_providers") or []):
+            if isinstance(cp, dict) and str(cp.get("name") or "").lower() == "9router" and cp.get("api_key"):
+                n_status, n_src, n_cred = "configured", "config.yaml custom_providers.9router", _mask_secret(cp["api_key"])
+                break
+    if n_status == "missing": n_status = "not_detected"
     result.append({"id": "9router", "name": "9router", "status": n_status,
                    "source": n_src, "credential": n_cred,
                    "detected_at": datetime.utcnow().isoformat() + "Z"})
@@ -1612,46 +1670,6 @@ def scan_tools():
     except Exception:
         pass
 
-    # ---- deteksi status nyata utk tool bersumber non-env (CLI/session/daemon) ----
-    # Tailscale: daemon jalan (tailscale status rc=0)
-    # OKX / BAW: session file onchainos / baw
-    # WhatsApp Baileys: dir session ada
-    # Supabase: MCP server terdaftar di config (mcp_servers.supabase) ATAU env
-    # Helius: env HELIUS_API_KEY (sumber utama key)
-    # 9router: daemon lokal reachable (set z 20128) — status tsb dari config model
-    for tool in result:
-        _id = tool.get("id")
-        try:
-            if _id == "tailscale":
-                r = subprocess.run(["tailscale", "status"], capture_output=True,
-                                   timeout=10, text=True, encoding="utf-8", errors="replace")
-                if r.returncode == 0:
-                    tool["status"], tool["source"], tool["credential"] = "configured", "cli tailscale status", None
-            elif _id == "okx":
-                for _f in ("/root/.onchainos/session.json", "/root/.baw/session.json"):
-                    if os.path.exists(_f):
-                        tool["status"], tool["source"], tool["credential"] = "configured", _f, None
-                        break
-            elif _id == "whatsapp":
-                for _d in ("/root/.hermes/whatsapp/session", "C:/Users/Parhan/.hermes/whatsapp/session"):
-                    if os.path.isdir(_d):
-                        tool["status"], tool["source"], tool["credential"] = "configured", _d, None
-                        break
-            elif _id == "supabase":
-                mcp = cfg.get("mcp_servers", {}) if isinstance(cfg, dict) else {}
-                if mcp.get("supabase"):
-                    tool["status"], tool["source"] = "configured", "config.yaml mcp_servers.supabase"
-                elif os.environ.get("SUPABASE_ACCESS_TOKEN") or os.environ.get("SUPABASE_URL"):
-                    tool["status"], tool["source"], tool["credential"] = "configured", "env SUPABASE_*", _mask_secret(os.environ.get("SUPABASE_ACCESS_TOKEN") or os.environ.get("SUPABASE_URL"))
-            elif _id == "helius":
-                if os.environ.get("HELIUS_API_KEY"):
-                    tool["status"], tool["source"], tool["credential"] = "configured", "env HELIUS_API_KEY", _mask_secret(os.environ["HELIUS_API_KEY"])
-            elif _id == "9router":
-                # status ditentukan blok khusus 9router di atas (config model); jangan tulis ulang
-                pass
-        except Exception:
-            pass
-
     cats_of = {tid: cfg.get("category", "Lainnya") for tid, cfg in TOOL_SCHEMAS.items()}
     for tool in result:
         tool["category"] = cats_of.get(tool.get("id"), "Lainnya")
@@ -1660,11 +1678,7 @@ def scan_tools():
         _ms = []
         if _tid in _MCP_TOOLS: _ms.append("mcp")
         if _tid in _CLI_TOOLS: _ms.append("cli")
-        # KEY hanya utk tool yg beneran butuh api key manual; 9router/tailscale/okx/whatsapp
-        # autentikasinya via CLI/daemon/session — jangan kasih opsi KEY.
-        _KEYLESS = {"9router", "tailscale", "okx", "whatsapp"}
-        if _tid not in _KEYLESS and (_tid not in _MCP_TOOLS or _tid in _CLI_TOOLS):
-            _ms.append("key")
+        if _tid not in _MCP_TOOLS or _tid in _CLI_TOOLS: _ms.append("key")
         tool["methods"] = _ms or ["key"]
         tool["method"] = tool["methods"][0]
     seen = {x.get("id") for x in result}
@@ -1721,10 +1735,6 @@ _CLI_TOOLS = {
     "tailscale": {"check": ["tailscale", "status"], "setup": ["tailscale", "login"]},
     "kubernetes": {"check": ["kubectl", "config", "current-context"], "setup": ["kubectl", "config", "get-contexts"]},
     "docker": {"check": ["docker", "info"], "setup": ["docker", "login"]},
-    "okx": {"check": ["okx-a2a", "--version"], "setup": ["okx-a2a", "login"]},
-    "supabase": {"check": ["supabase", "--version"], "setup": ["supabase", "link"]},
-    "whatsapp": {"check": ["node", "-e", "require('fs').existsSync('C:/Users/Parhan/Dev/hermes-config-remote')"], "setup": ["echo", "WhatsApp: scan QR via Baileys"]},
-    "9router": {"check": ["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", "http://127.0.0.1:20128/v1/models"], "setup": ["echo", "9router daemon (dahl-proxy)"]},
 }
 
 class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
@@ -1898,6 +1908,10 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
                 elif cv.get("type") == "file" and isinstance(cv.get("file"), dict):
                     cover_url = cv["file"].get("url") or ""
             tree = _notion_tree(cfg["token"], pid)
+            if not tree:
+                pt = page.get("parent", {})
+                if isinstance(pt, dict) and pt.get("type") == "database_id":
+                    tree = _notion_props_to_blocks(page.get("properties", {}))
             return self._send_json(200, {"success": True, "title": title, "icon": icon,
                                          "cover": cover_url, "blocks": tree})
 
