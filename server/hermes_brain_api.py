@@ -2145,11 +2145,20 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
                         req_headers["Authorization"] = f"Bearer {router_key}"
 
                     req = urllib.request.Request("http://127.0.0.1:20128/v1/models", headers=req_headers)
-                    with urllib.request.urlopen(req, timeout=1.5) as resp:
+                    with urllib.request.urlopen(req, timeout=3.0) as resp:
                         m_data = json.loads(resp.read().decode())
                         router_models = [m.get("id") for m in m_data.get("data", []) if m.get("id")]
                 except Exception:
                     pass
+
+                # Override 9router custom provider models with the router_models list
+                # (fetched above with a more generous timeout) so the model picker
+                # shows all router models instead of only the default fallback.
+                if router_models:
+                    for cp in clean_providers:
+                        if "20128" in cp.get("base_url", "") or "9-router" in cp.get("name", "").lower():
+                            cp["models"] = router_models
+                            break
 
                 # Ensure the active provider is always listed (model installed => provider must exist)
                 _real_provider = active_provider not in ("", "custom", "default")
