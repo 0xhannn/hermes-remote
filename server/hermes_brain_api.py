@@ -1106,6 +1106,7 @@ TOOL_SCHEMAS = {
     "gdrive": {"fields": [{"key": "service_account", "label": "Google Service Account JSON Path", "type": "text"}, {"key": "client_email", "label": "Client Email", "type": "text"}], "category": "Storage", "auth_url": "https://console.cloud.google.com/iam-admin/serviceaccounts"},
     "helius": {"fields": [{"key": "api_key", "label": "Helius API Key", "type": "token"}], "category": "Finance", "auth_url": "https://dashboard.helius.dev"},
     "fishaudio": {"fields": [{"key": "api_key", "label": "Fish Audio API Key", "type": "token"}], "category": "Media", "auth_url": "https://fish.audio/dashboard"},
+    "landingfolio": {"fields": [{"key": "api_key", "label": "LandingFolio API Key", "type": "token"}], "category": "Design", "auth_url": "https://www.landingfolio.com"},
 }
 
 _TOOL_NAMES = {
@@ -1143,6 +1144,7 @@ _MCP_TOOLS = {
     "notion": "notion",
     "supabase": "supabase",
     "vercel": "vercel",
+    "landingfolio": "landingfolio",
 }
 
 
@@ -1447,25 +1449,24 @@ def scan_tools():
                    "source": nt_src, "credential": nt_cred,
                    "detected_at": datetime.utcnow().isoformat() + "Z"})
 
-    # ---- 9router (custom provider / model api_key) ----
-    n_status, n_src, n_cred = "missing", "", None
-    model_cfg = cfg.get("model", {})
-    m_base = str(model_cfg.get("base_url") or "").lower()
-    m_key = model_cfg.get("api_key")
-    if m_key and "9router" in m_base:
-        n_status, n_src, n_cred = "configured", "config.yaml model (9router)", _mask_secret(m_key)
-    if n_status != "configured":
-        for cp in (cfg.get("custom_providers") or []):
-            if isinstance(cp, dict) and str(cp.get("name") or "").lower() == "9router" and cp.get("api_key"):
-                n_status, n_src, n_cred = "configured", "config.yaml custom_providers.9router", _mask_secret(cp["api_key"])
-                break
-    if n_status == "missing": n_status = "not_detected"
+    # ---- 9router (daemon lokal; api_key model BUKAN kredensial tool) ----
+    n_status, n_src, n_cred = "not_detected", "", None
+    try:
+        rr = subprocess.run(["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}",
+                             "http://127.0.0.1:20128/v1/models"],
+                            capture_output=True, timeout=5, text=True,
+                            encoding="utf-8", errors="replace")
+        if rr.returncode == 0 and rr.stdout.strip().startswith("2"):
+            n_status, n_src = "configured", "daemon lokal 127.0.0.1:20128 (9router/dahl-proxy)"
+    except Exception:
+        pass
     result.append({"id": "9router", "name": "9router", "status": n_status,
                    "source": n_src, "credential": n_cred,
                    "detected_at": datetime.utcnow().isoformat() + "Z"})
 
     # ---- OpenRouter (env / fallback providers) ----
     or_status, or_src, or_cred = "missing", "", None
+    model_cfg = cfg.get("model", {})
     if os.environ.get("OPENROUTER_API_KEY"):
         or_status, or_src, or_cred = "configured", "env OPENROUTER_API_KEY", _mask_secret(os.environ["OPENROUTER_API_KEY"])
     else:
@@ -1670,6 +1671,46 @@ def scan_tools():
     except Exception:
         pass
 
+    # ---- deteksi status nyata utk tool bersumber non-env (CLI/session/daemon) ----
+    # Tailscale: daemon jalan (tailscale status rc=0)
+    # OKX / BAW: session file onchainos / baw
+    # WhatsApp Baileys: dir session ada
+    # Supabase: MCP server terdaftar di config (mcp_servers.supabase) ATAU env
+    # Helius: env HELIUS_API_KEY (sumber utama key)
+    # 9router: daemon lokal reachable (set z 20128) — status tsb dari config model
+    for tool in result:
+        _id = tool.get("id")
+        try:
+            if _id == "tailscale":
+                r = subprocess.run(["tailscale", "status"], capture_output=True,
+                                   timeout=10, text=True, encoding="utf-8", errors="replace")
+                if r.returncode == 0:
+                    tool["status"], tool["source"], tool["credential"] = "configured", "cli tailscale status", None
+            elif _id == "okx":
+                for _f in ("/root/.onchainos/session.json", "/root/.baw/session.json"):
+                    if os.path.exists(_f):
+                        tool["status"], tool["source"], tool["credential"] = "configured", _f, None
+                        break
+            elif _id == "whatsapp":
+                for _d in ("/root/.hermes/whatsapp/session", "C:/Users/Parhan/.hermes/whatsapp/session"):
+                    if os.path.isdir(_d):
+                        tool["status"], tool["source"], tool["credential"] = "configured", _d, None
+                        break
+            elif _id == "supabase":
+                mcp = cfg.get("mcp_servers", {}) if isinstance(cfg, dict) else {}
+                if mcp.get("supabase"):
+                    tool["status"], tool["source"] = "configured", "config.yaml mcp_servers.supabase"
+                elif os.environ.get("SUPABASE_ACCESS_TOKEN") or os.environ.get("SUPABASE_URL"):
+                    tool["status"], tool["source"], tool["credential"] = "configured", "env SUPABASE_*", _mask_secret(os.environ.get("SUPABASE_ACCESS_TOKEN") or os.environ.get("SUPABASE_URL"))
+            elif _id == "helius":
+                if os.environ.get("HELIUS_API_KEY"):
+                    tool["status"], tool["source"], tool["credential"] = "configured", "env HELIUS_API_KEY", _mask_secret(os.environ["HELIUS_API_KEY"])
+            elif _id == "9router":
+                # status ditentukan blok khusus 9router di atas (config model); jangan tulis ulang
+                pass
+        except Exception:
+            pass
+
     cats_of = {tid: cfg.get("category", "Lainnya") for tid, cfg in TOOL_SCHEMAS.items()}
     for tool in result:
         tool["category"] = cats_of.get(tool.get("id"), "Lainnya")
@@ -1678,12 +1719,21 @@ def scan_tools():
         _ms = []
         if _tid in _MCP_TOOLS: _ms.append("mcp")
         if _tid in _CLI_TOOLS: _ms.append("cli")
-        if _tid not in _MCP_TOOLS or _tid in _CLI_TOOLS: _ms.append("key")
+        # KEY hanya utk tool yg beneran butuh api key manual; 9router/tailscale/okx/whatsapp
+        # autentikasinya via CLI/daemon/session — jangan kasih opsi KEY.
+        _KEYLESS = {"9router", "tailscale", "okx", "whatsapp"}
+        if _tid not in _KEYLESS and (_tid not in _MCP_TOOLS or _tid in _CLI_TOOLS):
+            _ms.append("key")
         tool["methods"] = _ms or ["key"]
         tool["method"] = tool["methods"][0]
     seen = {x.get("id") for x in result}
     for tid, cfg in TOOL_SCHEMAS.items():
         if tid not in seen:
+            _fbms = []
+            if tid in _MCP_TOOLS: _fbms.append("mcp")
+            if tid in _CLI_TOOLS: _fbms.append("cli")
+            if tid not in _KEYLESS and (tid not in _MCP_TOOLS or tid in _CLI_TOOLS):
+                _fbms.append("key")
             result.append({
                 "id": tid,
                 "name": _TOOL_NAMES.get(tid, tid),
@@ -1692,6 +1742,8 @@ def scan_tools():
                 "credential": None,
                 "category": cfg.get("category", "Lainnya"),
                 "supported": True,
+                "methods": _fbms or ["key"],
+                "method": (_fbms or ["key"])[0],
             })
 
     _conn = _mcp_connected()
@@ -1735,6 +1787,10 @@ _CLI_TOOLS = {
     "tailscale": {"check": ["tailscale", "status"], "setup": ["tailscale", "login"]},
     "kubernetes": {"check": ["kubectl", "config", "current-context"], "setup": ["kubectl", "config", "get-contexts"]},
     "docker": {"check": ["docker", "info"], "setup": ["docker", "login"]},
+    "okx": {"check": ["okx-a2a", "--version"], "setup": ["okx-a2a", "login"]},
+    "supabase": {"check": ["supabase", "--version"], "setup": ["supabase", "link"]},
+    "whatsapp": {"check": ["node", "-e", "require('fs').existsSync('C:/Users/Parhan/Dev/hermes-config-remote')"], "setup": ["echo", "WhatsApp: scan QR via Baileys"]},
+    "9router": {"check": ["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", "http://127.0.0.1:20128/v1/models"], "setup": ["echo", "9router daemon (dahl-proxy)"]},
 }
 
 class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
