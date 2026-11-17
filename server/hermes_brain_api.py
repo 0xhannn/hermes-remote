@@ -951,6 +951,53 @@ def _notion_props_to_blocks(props):
             out.append({"type": "paragraph", "rt": rt, "color": "default"})
     return out
 
+def _notion_row_cells(props):
+    """Extract columns for table rendering of a database row."""
+    cells = []
+    # title column dulu
+    title_val = ""
+    for k, v in (props or {}).items():
+        if isinstance(v, dict) and v.get("type") == "title":
+            title_val = "".join(x.get("plain_text", "") for x in v.get("title", []))
+            break
+    for k, v in (props or {}).items():
+        if not isinstance(v, dict):
+            continue
+        typ = v.get("type")
+        if typ == "title":
+            continue
+        val = ""
+        url = None
+        if typ == "rich_text":
+            val = "".join(x.get("plain_text", "") for x in v.get("rich_text", []))
+        elif typ == "select" and isinstance(v.get("select"), dict):
+            val = v["select"].get("name", "")
+        elif typ == "status" and isinstance(v.get("status"), dict):
+            val = v["status"].get("name", "")
+        elif typ == "multi_select":
+            val = ", ".join(o.get("name", "") for o in v.get("multi_select", []) if isinstance(o, dict))
+        elif typ == "url":
+            url = v.get("url") or ""
+            val = url
+        elif typ == "number" and v.get("number") is not None:
+            val = str(v["number"])
+        elif typ == "date" and isinstance(v.get("date"), dict):
+            val = v["date"].get("start", "") or ""
+        elif typ == "checkbox":
+            val = "Yes" if v.get("checkbox") else "No"
+        elif typ == "email":
+            val = v.get("email") or ""
+        elif typ == "phone_number":
+            val = v.get("phone_number") or ""
+        elif typ == "people":
+            val = ", ".join(p.get("name", "") for p in v.get("people", []) if isinstance(p, dict) and p.get("name"))
+        elif typ == "formula" and isinstance(v.get("formula"), dict):
+            f = v["formula"]
+            val = str(f.get(f.get("type"), ""))
+        if val or url:
+            cells.append({"name": k, "value": val, "url": url})
+    return {"title": title_val, "cells": cells}
+
 def _notion_props_to_md(props):
 
     lines = []
@@ -1924,6 +1971,22 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
                 pages.append({"id": pg["id"], "title": _page_title(pg.get("properties", {}))})
             return self._send_json(200, {"success": True, "pages": pages})
 
+        if path == "/api/hermes/notion/db":
+            cfg = _notion_load()
+            if not cfg.get("token"):
+                return self._send_json(400, {"success": False, "error": "Notion belum dikonfigurasi"})
+            dbid = urllib.parse.parse_qs(parsed.query).get("id", [""])[0]
+            if not dbid:
+                return self._send_json(400, {"success": False, "error": "parameter id (database) wajib diisi"})
+            st, res = _notion_api(cfg["token"], "POST", "databases/" + dbid + "/query", {"page_size": 100})
+            if st != 200:
+                return self._send_json(st, {"success": False, "error": res.get("message")})
+            rows = []
+            for pg in res.get("results", []):
+                cells = _notion_row_cells(pg.get("properties", {}))
+                rows.append({"id": pg.get("id"), "title": cells["title"] or "(untitled)", "cells": cells["cells"]})
+            return self._send_json(200, {"success": True, "rows": rows})
+
         if path == "/api/hermes/notion/page":
             pid = urllib.parse.parse_qs(parsed.query).get("id", [""])[0]
             cfg = _notion_load()
@@ -1976,28 +2039,40 @@ class HermesBrainHandler(http.server.BaseHTTPRequestHandler):
             if not cfg.get("token"):
                 return self._send_json(400, {"success": False, "error": "Notion belum dikonfigurasi"})
             q = urllib.parse.parse_qs(parsed.query).get("q", [""])[0]
-            body = {"page_size": 50}
+            body = {"page_size": 100}
             if q:
                 body["query"] = q
             st, res = _notion_api(cfg["token"], "POST", "search", body)
             if st != 200:
                 return self._send_json(st, {"success": False, "error": res.get("message")})
+            # paginate bila lebih dari 100 item (ambil SEMUA, bukan potong 50)
+            items_raw = list(res.get("results", []))
+            while res.get("has_more") and res.get("next_cursor"):
+                body["start_cursor"] = res["next_cursor"]
+                st, res = _notion_api(cfg["token"], "POST", "search", body)
+                if st != 200:
+                    break
+                items_raw.extend(res.get("results", []))
             items = []
-            for r in res.get("results", []):
+            for r in items_raw:
                 par = r.get("parent") or {}
                 if r.get("object") == "page":
                     props = r.get("properties", {})
-                    title = ""
-                    for k, v in props.items():
-                        if isinstance(v, dict) and v.get("type") == "title":
-                            title = "".join(x.get("plain_text", "") for x in v.get("title", []))
-                            break
+                    title = _page_title(props)
                     # parent bisa page_id ATAU database_id (baris database)
                     ppar = par.get("page_id") or par.get("database_id") or ""
                     items.append({"id": r.get("id"), "title": title or "(untitled)", "kind": "page", "parent": ppar})
                 else:
                     # database (child page) — parent = page_id penampungnya
                     items.append({"id": r.get("id"), "title": _notion_title(r), "kind": "database", "parent": par.get("page_id") or ""})
+            # Pastikan setiap database yg jadi parent baris ikut sebagai node (jika tak muncul di hasil)
+            known = {it["id"] for it in items}
+            for it in list(items):
+                if it["kind"] == "page" and it["parent"] and it["parent"] not in known:
+                    st2, db = _notion_api(cfg["token"], "GET", "databases/" + it["parent"])
+                    if st2 == 200:
+                        known.add(it["parent"])
+                        items.append({"id": it["parent"], "title": _notion_title(db) or "(database)", "kind": "database", "parent": ""})
             return self._send_json(200, {"success": True, "items": items})
 
 
